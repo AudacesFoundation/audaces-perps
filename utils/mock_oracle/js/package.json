@@ -1,0 +1,10 @@
+{
+  "name": "mock_oracle",
+  "version": "1.0.0",
+  "main": "main.ts",
+  "author": "Audaces Foundation",
+  "license": "MIT",
+  "dependencies": {
+    "@solana/web3.js": "^1.2.5"
+  }
+}

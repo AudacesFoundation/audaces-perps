@@ -1,0 +1,6 @@
+- name: Stop crankers
+  hosts: all
+  remote_user: ubuntu
+  tasks:
+    - name: pm2 delete all
+      shell: pm2 delete all

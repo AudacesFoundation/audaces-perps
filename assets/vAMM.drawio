@@ -1,0 +1,133 @@
+<mxfile>
+    <diagram id="lbvk9ygS3dfn2yX4x_Il" name="Page-1">
+        <mxGraphModel dx="1477" dy="1235" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="52" value="" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="1640" y="80" width="560" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="&lt;span&gt;Leaf Node content&lt;/span&gt;&amp;nbsp;(49 bytes):&amp;nbsp;&lt;br&gt;- Liquidation index (u64)&lt;br&gt;- Leverage (u8)&lt;br&gt;- Pubkey (u256)&lt;br&gt;- Collateral (u64)" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1970" y="150" width="200" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="38" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="10" target="12" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="39" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;" parent="1" source="10" target="13" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="MEMORY HEADER&lt;br&gt;pointer, pointer&lt;br&gt;pointer_to_empty_nodes&lt;br&gt;pointer_to_first_uninitialized" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1220" y="300" width="207" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;" parent="1" source="12" target="27" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;" parent="1" source="12" target="26" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="12" value="pointer, critbit, pointer&lt;br&gt;lazy_amount" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#b85450;fillColor=none;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="950" y="435" width="210" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" parent="1" source="13" target="19" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" parent="1" source="13" target="17" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="13" value="pointer, critbit, pointer&lt;br&gt;lazy_amount" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#82b366;fillColor=none;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="1590" y="435" width="210" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" value="liquidation index,&amp;nbsp;&lt;br&gt;collateral_old&lt;br&gt;..." style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#82b366;fillColor=none;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="1770" y="550" width="210" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" parent="1" source="19" target="25" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="36" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" parent="1" source="19" target="24" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="19" value="pointer, critbit, pointer&lt;br&gt;lazy_amount" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#82b366;fillColor=none;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="1430" y="550" width="210" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="" style="endArrow=classic;html=1;dashed=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="1820" y="455" as="sourcePoint"/>
+                        <mxPoint x="1930" y="540" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="1900" y="480"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="23" value="Update amounts and collaterals top to bottom when walking through the trie" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1910" y="425" width="260" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="24" value="liquidation index,&amp;nbsp;&lt;br&gt;collateral&lt;br&gt;..." style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#82b366;fillColor=none;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="1300" y="695" width="210" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="25" value="liquidation index,&amp;nbsp;&lt;br&gt;collateral&lt;br&gt;..." style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#82b366;fillColor=none;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="1570" y="695" width="210" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="26" value="liquidation index,&amp;nbsp;&lt;br&gt;collateral&lt;br&gt;..." style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#b85450;fillColor=none;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="830" y="550" width="210" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="27" value="liquidation index,&amp;nbsp;&lt;br&gt;collateral&lt;br&gt;..." style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#b85450;fillColor=none;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="1080" y="550" width="210" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="40" value="" style="endArrow=none;html=1;strokeWidth=2;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="880" y="290" as="sourcePoint"/>
+                        <mxPoint x="930" y="290" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="41" value="" style="endArrow=none;html=1;strokeWidth=2;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="880" y="320.0000000000001" as="sourcePoint"/>
+                        <mxPoint x="930" y="320.0000000000001" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="42" value="Short" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="935" y="280" width="40" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="43" value="Long" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="935" y="310" width="40" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="45" value="Deletion of a sub tree flags the highest relevant internal node for the garbage collector" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" parent="1" vertex="1">
+                    <mxGeometry x="1080" y="80" width="470" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="46" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="880" y="40" width="65" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="47" value="" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="880" y="70" width="65" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="48" value="Leaf node" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" parent="1" vertex="1">
+                    <mxGeometry x="945" y="40" width="70" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="49" value="Internal node" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" parent="1" vertex="1">
+                    <mxGeometry x="945" y="70" width="90" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="50" value="The garbage collector follows the marked node" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" parent="1" vertex="1">
+                    <mxGeometry x="1185" y="110" width="260" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="51" value="Memory is divided into leaf node sized mem slot" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" parent="1" vertex="1">
+                    <mxGeometry x="1180" y="140" width="270" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="53" value="&lt;span&gt;Inner Node content&lt;/span&gt;&amp;nbsp;(18 bytes):&amp;nbsp;&lt;br&gt;- critbit (u16)&lt;br&gt;- pointer (u32)&lt;br&gt;- pointer (u32)&lt;br&gt;- lazy_size (u64)&lt;br&gt;- lazy_collateral (u64)" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1680" y="150" width="210" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="54" value="MEMORY SLOT (50 bytes)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1820" y="50" width="220" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="55" value="Memory tag (u8): Inner/Leaf/Free/Initialized" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1765" y="110" width="310" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="56" value="TODO? divide inner node mem slot by 2" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" parent="1" vertex="1">
+                    <mxGeometry x="1195" y="170" width="230" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="57" value="When hitting the account data size limit, open a new account" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" parent="1" vertex="1">
+                    <mxGeometry x="1145" y="200" width="340" height="20" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

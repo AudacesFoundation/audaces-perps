@@ -1,0 +1,53 @@
+- name: Setup server
+  hosts: all
+  remote_user: ubuntu
+  tasks:
+    - name: update packages
+      become: yes
+      become_method: sudo
+      apt:
+        upgrade: "yes"
+        update_cache: yes
+    - name: Install packages
+      become: yes
+      become_method: sudo
+      apt:
+        update_cache: yes
+        name:
+          - libssl-dev
+          - libudev-dev
+          - build-essential
+          - pkg-config
+          - curl
+        state: present
+    - name: Prepare Node install
+      become: yes
+      become_method: sudo
+      shell: curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
+    - name: Install Node
+      become: yes
+      become_method: sudo
+      shell: apt-get install -y nodejs
+    - name: Install pm2 and yarn
+      become: yes
+      become_method: sudo
+      shell: npm install --global yarn && npm install --global pm2
+    - name: install rust
+      shell: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    - name: Reset folder
+      shell: cd audaces-perps && git reset --hard && cd ..
+      ignore_errors: yes
+    - name: Get updated files from github
+      git:
+        repo: "https://github.com/AudacesFoundation/audaces-perps.git"
+        dest: audaces-perps
+    - name: Build Cranker
+      shell: cd audaces-perps/cranker && $HOME/.cargo/bin/cargo update && $HOME/.cargo/bin/cargo build --release
+    - name: Run yarn
+      shell: cd $HOME/audaces-perps/cranker/pm2 && yarn
+    - name: Add pm2 to system
+      shell: pm2 startup | sh
+    - name: Install PM2 metrics
+      shell: pm2 install pm2-metrics
+    - name: Start crankers
+      shell: cd  $HOME/audaces-perps/cranker/pm2/ && pm2 start

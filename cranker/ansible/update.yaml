@@ -1,0 +1,14 @@
+- name: Update and restart
+  hosts: all
+  remote_user: ubuntu
+  tasks:
+    - name: Reset git
+      shell: cd audaces-perps && git reset --hard && cd ..
+    - name: Get updated files from github
+      git:
+        repo: "https://github.com/AudacesFoundation/audaces-perps.git"
+        dest: audaces-perps
+    - name: Build new binary
+      shell: cd audaces-perps/cranker &&  $HOME/.cargo/bin/cargo build --release
+    - name: Restart all
+      shell: pm2 restart all
