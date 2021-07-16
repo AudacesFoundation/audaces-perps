@@ -278,7 +278,7 @@ async fn run_liquidation(
                     connection.send_transaction_with_config(
                         &tr,
                         RpcSendTransactionConfig {
-                            skip_preflight: true,
+                            skip_preflight: false,
                             preflight_commitment: None,
                             ..RpcSendTransactionConfig::default()
                         },
