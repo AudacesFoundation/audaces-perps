@@ -48,3 +48,34 @@ pub fn no_op_filter(r: Result<Signature, ClientError>) -> Result<Signature, Clie
         r
     }
 }
+
+pub fn invalid_signature_filter(
+    r: Result<Signature, ClientError>,
+) -> Result<Signature, ClientError> {
+    if let Err(e) = &r {
+        match &e.kind {
+            solana_client::client_error::ClientErrorKind::RpcError(
+                solana_client::rpc_request::RpcError::RpcResponseError {
+                    code: _,
+                    message: _,
+                    data,
+                },
+            ) => {
+                if let solana_client::rpc_request::RpcResponseErrorData::SendTransactionPreflightFailure(f) = data {
+                    match f.err {
+                        Some(solana_sdk::transaction::TransactionError::InstructionError(_, InstructionError::InvalidArgument)) => {
+                            println!("The position has not been liquidated.");
+                            Ok(Signature::new(&[0;64]))
+                        }
+                        _ => r
+                    }
+                } else {
+                    r
+                }
+            }
+            _ => r,
+        }
+    } else {
+        r
+    }
+}
