@@ -165,7 +165,10 @@ export async function getLiquidationTransaction(
 ) {
   let re =
     /Program log: Order not found, it was liquidated at index: (?<liquidationIndex>.*), with collateral (?<collateral>.*), with parent node slot (?<parentNodeSlot>.*)/;
-  let tx = await connection.getParsedConfirmedTransaction(closeSignature);
+  let tx = await connection.getParsedConfirmedTransaction(
+    closeSignature,
+    "confirmed"
+  );
   let logMessages = tx?.meta?.logMessages;
   if (!logMessages) {
     throw "Failed to parse transaction";
@@ -216,7 +219,8 @@ export async function getPastInstructions(
 ): Promise<PastInstruction[]> {
   let sigs = await connection.getConfirmedSignaturesForAddress2(
     lookupAddress,
-    options
+    options,
+    "confirmed"
   );
   console.log("Retrieved signatures: ", sigs.length);
   let pastInstructions: PastInstruction[] = (
@@ -258,7 +262,8 @@ async function getPastInstructionsRaw(
 ): Promise<PastInstructionRaw[]> {
   let sigs = await connection.getConfirmedSignaturesForAddress2(
     lookupAddress,
-    options
+    options,
+    "confirmed"
   );
   console.log("Retrieved signatures: ", sigs.length);
   let pastInstructions: PastInstructionRaw[] = [];
@@ -268,7 +273,10 @@ async function getPastInstructionsRaw(
   for (let s of sigs) {
     console.log("Retrieving ", i, " with sig ", s.signature);
     i++;
-    let tx_null = await connection.getConfirmedTransaction(s.signature);
+    let tx_null = await connection.getConfirmedTransaction(
+      s.signature,
+      "confirmed"
+    );
     if (!tx_null || !!tx_null?.meta?.err) {
       continue;
     }
@@ -347,7 +355,7 @@ export async function extractTradeInfoFromTransaction(
   connection: Connection,
   txSig: string
 ): Promise<PastTrade[]> {
-  let tx_null = await connection.getConfirmedTransaction(txSig);
+  let tx_null = await connection.getConfirmedTransaction(txSig, "confirmed");
   if (!tx_null) {
     throw "Could not retrieve transaction";
   }
@@ -419,12 +427,16 @@ export async function getFundingPaymentsHistoryForUser(
 ): Promise<FundingDetails[]> {
   let txs = await connection.getConfirmedSignaturesForAddress2(
     userAccount,
-    options
+    options,
+    "confirmed"
   );
   let fundingSignatures = [] as FundingDetails[];
 
   for (let t of txs) {
-    let details = await connection.getConfirmedTransaction(t.signature);
+    let details = await connection.getConfirmedTransaction(
+      t.signature,
+      "confirmed"
+    );
     let instructions = details?.transaction.instructions;
     if (!instructions) {
       continue;
@@ -473,11 +485,15 @@ export async function getFundingPaymentsHistory(
 ): Promise<FundingDetails[]> {
   let txs = await connection.getConfirmedSignaturesForAddress2(
     FUNDING_EXTRACTION_LABEL,
-    options
+    options,
+    "confirmed"
   );
   let crankedFundingSignatures = [] as FundingDetails[];
   for (let t of txs) {
-    let details = await connection.getConfirmedTransaction(t.signature);
+    let details = await connection.getConfirmedTransaction(
+      t.signature,
+      "confirmed"
+    );
     let instructions = details?.transaction.instructions;
     if (!instructions) {
       console.log("Empty instructions");
