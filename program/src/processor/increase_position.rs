@@ -220,6 +220,11 @@ pub fn process_increase_position(
         open_position.side,
         market_state.get_k(),
     );
+
+    println!(
+        "Liquidation index for this position: {:?}",
+        new_liquidation_index
+    );
     let current_slot = Clock::from_account_info(accounts.clock_sysvar)?.slot;
     let insertion_leaf = book.open_position(
         new_liquidation_index,
