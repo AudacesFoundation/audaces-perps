@@ -1,7 +1,7 @@
 use audaces_protocol::{
     instruction::{
-        collect_garbage, crank_funding, crank_liquidation, extract_funding, InstanceContext,
-        MarketContext,
+        close_position, collect_garbage, crank_funding, crank_liquidation, extract_funding,
+        InstanceContext, MarketContext, PositionInfo,
     },
     processor::FIDA_BNB,
     state::{
@@ -41,7 +41,7 @@ use tokio::{
     time::interval,
 };
 
-use crate::utils::no_op_filter;
+use crate::utils::{invalid_signature_filter, no_op_filter};
 
 pub mod error;
 
@@ -58,6 +58,7 @@ pub struct Context {
 const LIQUIDATION_PERIOD: u64 = 1_000;
 const FUNDING_PERIOD: u64 = 1_000;
 const FUNDING_EXTRACTION_PERIOD: u64 = 1_800_000;
+const LIQUIDATION_CLEANUP_PERIOD: u64 = 1_800_000;
 const GARBAGE_COLLECTION_PERIOD: u64 = 10_000;
 const GARBAGE_COLLECT_MAX_ITERATIONS: u64 = 500;
 
@@ -150,6 +151,27 @@ impl Context {
                     "Finished funding extraction cycle in {:?}s within a funding period of {:?}s",
                     end_time.duration_since(start_time).unwrap().as_secs_f64(),
                     FUNDING_PERIOD / 1000
+                )
+            }
+        };
+        rt.block_on(t);
+    }
+
+    pub fn crank_liquidation_cleanup(self, swarm_size: u16, node_id: u8) {
+        let s = Arc::new(self);
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+        let t = async move {
+            let mut ticker = interval(Duration::from_millis(LIQUIDATION_CLEANUP_PERIOD));
+            loop {
+                ticker.tick().await;
+                let start_time = SystemTime::now();
+                crank_liquidation_cleanup_iteration(&s, swarm_size, node_id).await;
+                let end_time = SystemTime::now();
+                println!(
+                    "Finished liquidation cleanup cycle in {:?}s within a liquidation cleanup period of {:?}s",
+                    end_time.duration_since(start_time).unwrap().as_secs_f64(),
+                    LIQUIDATION_CLEANUP_PERIOD / 1000
                 )
             }
         };
@@ -335,6 +357,7 @@ async fn crank_garbage_collection(
         );
     }
 }
+
 async fn crank_funding_extraction_iteration(ctx: &Arc<Context>, swarm_size: u16, node_id: u8) {
     if swarm_size == 0 {
         panic!("Swarm size should be non-zero");
@@ -348,82 +371,7 @@ async fn crank_funding_extraction_iteration(ctx: &Arc<Context>, swarm_size: u16,
     if node_id as u16 >= swarm_size {
         panic!("Node id should be less than swarm size.")
     }
-
-    let res = (0..(256 / (swarm_size as u16))).map(move |id| ((id * swarm_size) as u8) + node_id);
-    let configs = if swarm_size > 1 {
-        res.map(|m| RpcProgramAccountsConfig {
-            filters: Some(vec![
-                // Filter for user accounts
-                RpcFilterType::Memcmp(Memcmp {
-                    offset: 0,
-                    bytes: rpc_filter::MemcmpEncodedBytes::Binary(
-                        bs58::encode(vec![StateObject::UserAccount as u8]).into_string(),
-                    ),
-                    encoding: None,
-                }),
-                // Filter for a subset of owners
-                RpcFilterType::Memcmp(Memcmp {
-                    offset: 2,
-                    bytes: rpc_filter::MemcmpEncodedBytes::Binary(
-                        bs58::encode(vec![m]).into_string(),
-                    ),
-                    encoding: None,
-                }),
-                // Filter for active user accounts (with open positions)
-                RpcFilterType::Memcmp(Memcmp {
-                    offset: 34,
-                    bytes: rpc_filter::MemcmpEncodedBytes::Binary(
-                        bs58::encode(vec![1]).into_string(),
-                    ),
-                    encoding: None,
-                }),
-                // Filter for user accounts affiliated with the current market
-                RpcFilterType::Memcmp(Memcmp {
-                    offset: 35,
-                    bytes: rpc_filter::MemcmpEncodedBytes::Binary(ctx.market.to_string()),
-                    encoding: None,
-                }),
-            ]),
-            account_config: RpcAccountInfoConfig {
-                encoding: None,
-                data_slice: None,
-                commitment: None,
-            },
-            with_context: None,
-        })
-        .collect::<Vec<_>>()
-    } else {
-        vec![RpcProgramAccountsConfig {
-            filters: Some(vec![
-                // Filter for user accounts
-                RpcFilterType::Memcmp(Memcmp {
-                    offset: 0,
-                    bytes: rpc_filter::MemcmpEncodedBytes::Binary(
-                        bs58::encode(&[StateObject::UserAccount as u8]).into_string(),
-                    ),
-                    encoding: None,
-                }),
-                // Filter for active user accounts (with open positions)
-                RpcFilterType::Memcmp(Memcmp {
-                    offset: 34,
-                    bytes: rpc_filter::MemcmpEncodedBytes::Binary(bs58::encode(&[1]).into_string()),
-                    encoding: None,
-                }),
-                // Filter for user accounts affiliated with the current market
-                RpcFilterType::Memcmp(Memcmp {
-                    offset: 35,
-                    bytes: rpc_filter::MemcmpEncodedBytes::Binary(ctx.market.to_string()),
-                    encoding: None,
-                }),
-            ]),
-            account_config: RpcAccountInfoConfig {
-                encoding: None,
-                data_slice: None,
-                commitment: None,
-            },
-            with_context: None,
-        }]
-    };
+    let configs = get_node_filters(ctx, swarm_size, node_id);
     let url = ctx.endpoint.clone();
     let program_id = ctx.program_id;
     let accounts = stream::iter(configs.into_iter())
@@ -503,6 +451,213 @@ async fn crank_funding_extraction_iteration(ctx: &Arc<Context>, swarm_size: u16,
                     )
                     .await;
                     println!("Sent funding extraction transaction {:?}", sig);
+                }
+            }
+        };
+        tasks.push(task::spawn(t))
+    }
+    for t in tasks {
+        t.await.unwrap();
+    }
+}
+
+fn get_node_filters(
+    ctx: &Arc<Context>,
+    swarm_size: u16,
+    node_id: u8,
+) -> Vec<RpcProgramAccountsConfig> {
+    if swarm_size > 1 {
+        let mut res = Vec::with_capacity((256 / swarm_size + 1) as usize);
+        let mut offset = node_id;
+        if swarm_size > 256 {
+            panic!("Swarm sizes larger than 256 are unsupported");
+        }
+        let swarm_size_u8 = swarm_size as u8;
+        loop {
+            res.push(RpcProgramAccountsConfig {
+                filters: Some(vec![
+                    // Filter for user accounts
+                    RpcFilterType::Memcmp(Memcmp {
+                        offset: 0,
+                        bytes: rpc_filter::MemcmpEncodedBytes::Binary(
+                            bs58::encode(vec![StateObject::UserAccount as u8]).into_string(),
+                        ),
+                        encoding: None,
+                    }),
+                    // Filter for a subset of owners
+                    RpcFilterType::Memcmp(Memcmp {
+                        offset: 2,
+                        bytes: rpc_filter::MemcmpEncodedBytes::Binary(
+                            bs58::encode(vec![offset]).into_string(),
+                        ),
+                        encoding: None,
+                    }),
+                    // Filter for active user accounts (with open positions)
+                    RpcFilterType::Memcmp(Memcmp {
+                        offset: 34,
+                        bytes: rpc_filter::MemcmpEncodedBytes::Binary(
+                            bs58::encode(vec![1]).into_string(),
+                        ),
+                        encoding: None,
+                    }),
+                    // Filter for user accounts affiliated with the current market
+                    RpcFilterType::Memcmp(Memcmp {
+                        offset: 35,
+                        bytes: rpc_filter::MemcmpEncodedBytes::Binary(ctx.market.to_string()),
+                        encoding: None,
+                    }),
+                ]),
+                account_config: RpcAccountInfoConfig {
+                    encoding: None,
+                    data_slice: None,
+                    commitment: None,
+                },
+                with_context: None,
+            });
+            if let Some(o) = offset.checked_add(swarm_size_u8) {
+                offset = o;
+            } else {
+                break;
+            }
+        }
+        res
+    } else {
+        vec![RpcProgramAccountsConfig {
+            filters: Some(vec![
+                // Filter for user accounts
+                RpcFilterType::Memcmp(Memcmp {
+                    offset: 0,
+                    bytes: rpc_filter::MemcmpEncodedBytes::Binary(
+                        bs58::encode(&[StateObject::UserAccount as u8]).into_string(),
+                    ),
+                    encoding: None,
+                }),
+                // Filter for active user accounts (with open positions)
+                RpcFilterType::Memcmp(Memcmp {
+                    offset: 34,
+                    bytes: rpc_filter::MemcmpEncodedBytes::Binary(bs58::encode(&[1]).into_string()),
+                    encoding: None,
+                }),
+                // Filter for user accounts affiliated with the current market
+                RpcFilterType::Memcmp(Memcmp {
+                    offset: 35,
+                    bytes: rpc_filter::MemcmpEncodedBytes::Binary(ctx.market.to_string()),
+                    encoding: None,
+                }),
+            ]),
+            account_config: RpcAccountInfoConfig {
+                encoding: None,
+                data_slice: None,
+                commitment: None,
+            },
+            with_context: None,
+        }]
+    }
+}
+
+async fn crank_liquidation_cleanup_iteration(ctx: &Arc<Context>, swarm_size: u16, node_id: u8) {
+    if swarm_size == 0 {
+        panic!("Swarm size should be non-zero");
+    }
+    if !swarm_size.is_power_of_two() {
+        panic!("Swarm size must be a power of two");
+    }
+    if swarm_size > 256 {
+        panic!("Maximum supported swarm size is 256");
+    }
+    if node_id as u16 >= swarm_size {
+        panic!("Node id should be less than swarm size.")
+    }
+    let configs = get_node_filters(ctx, swarm_size, node_id);
+    let url = ctx.endpoint.clone();
+    let program_id = ctx.program_id;
+    let accounts = stream::iter(configs.into_iter())
+        .then(move |c| account_stream(program_id, url.clone(), c))
+        .flatten();
+    let connection = RpcClient::new(ctx.endpoint.to_owned());
+
+    let accounts_mutex = Arc::new(Mutex::new(Box::pin(accounts)));
+    let (market, _) = utils::retry(
+        &connection,
+        |c| get_market(ctx.program_id, ctx.market, &c),
+        |r| r,
+    )
+    .await;
+    let market = Arc::new(market);
+    let mut tasks = Vec::with_capacity(num_cpus::get());
+    for _ in 0..tasks.capacity() {
+        let task_mutex = Arc::clone(&accounts_mutex);
+        let connection = RpcClient::new(ctx.endpoint.to_owned());
+        let c = Arc::clone(&ctx);
+        let m = Arc::clone(&market);
+        let t = async move {
+            loop {
+                // Can't use if let here due to borrow checker in an async context
+                let next = {
+                    let mut f = task_mutex.lock().await;
+                    f.next().await
+                };
+                if next.is_none() {
+                    break;
+                };
+                let (k, a): (Pubkey, Account) = next.unwrap();
+                println!("Processing funding for {:?}", k);
+                let fee_payer_pk = c.fee_payer.pubkey();
+                let transactions = {
+                    let mut position_offset = UserAccountState::LEN;
+                    let header =
+                        UserAccountState::unpack_from_slice(&a.data[..UserAccountState::LEN])
+                            .unwrap();
+                    let mut cranked_instance_indices: Vec<u8> = vec![0; m.instances.len()];
+                    let mut instructions = vec![];
+                    for position_index in 0..(header.number_of_open_positions as u16) {
+                        let position = OpenPosition::unpack_from_slice(
+                            &a.data[position_offset..position_offset + OpenPosition::LEN],
+                        )
+                        .unwrap();
+                        cranked_instance_indices[position.instance_index as usize] = 1;
+                        let position_info = PositionInfo {
+                            user_account: k,
+                            user_account_owner: c.fee_payer.pubkey(), // This makes sense for the permissionless crank
+                            instance_index: position.instance_index,
+                            side: position.side,
+                        };
+                        instructions.push(close_position(
+                            &m,
+                            &position_info,
+                            0,
+                            0,
+                            position_index,
+                            0,
+                            u64::MAX,
+                            None,
+                            None,
+                        ));
+                        position_offset += OpenPosition::LEN;
+                    }
+                    instructions
+                        .into_iter()
+                        .map(|i| Transaction::new_with_payer(&[i], Some(&fee_payer_pk)))
+                };
+                for t in transactions {
+                    let sig = utils::retry(
+                        t,
+                        |t| {
+                            let mut tr = t.clone();
+                            let (recent_blockhash, _) = connection.get_recent_blockhash()?;
+                            tr.partial_sign::<Vec<&Keypair>>(&vec![&c.fee_payer], recent_blockhash);
+                            connection.send_transaction_with_config(
+                                &tr,
+                                RpcSendTransactionConfig {
+                                    skip_preflight: false,
+                                    ..RpcSendTransactionConfig::default()
+                                },
+                            )
+                        },
+                        invalid_signature_filter,
+                    )
+                    .await;
+                    println!("Sent liquidation cleanup transaction {:?}", sig);
                 }
             }
         };
