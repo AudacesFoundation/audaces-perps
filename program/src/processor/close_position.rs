@@ -137,10 +137,7 @@ pub fn process_close_position(
         msg!("Provided oracle account is incorrect.");
         return Err(ProgramError::InvalidArgument);
     }
-    if *accounts.user_account_owner.key != Pubkey::new(&user_account_header.owner) {
-        msg!("The user account owner is invalid");
-        return Err(ProgramError::InvalidArgument);
-    }
+
     if &Pubkey::new(&user_account_header.market) != accounts.market.key {
         msg!("The user account market doesn't match the given market account");
         return Err(ProgramError::InvalidArgument);
@@ -149,18 +146,6 @@ pub fn process_close_position(
         msg!("Funding must be processed for this account.");
         return Err(PerpError::PendingFunding.into());
     }
-
-    let clock = Clock::from_account_info(accounts.clock_sysvar)?;
-    let current_timestamp = clock.unix_timestamp;
-
-    let oracle_price = get_oracle_price(
-        &accounts.oracle.data.borrow(),
-        market_state.coin_decimals,
-        market_state.quote_decimals,
-    )?;
-    let mut closing_collateral_ltd = core::cmp::min(closing_collateral, open_position.collateral);
-
-    let closing_v_coin_ltd = core::cmp::min(closing_v_coin, open_position.v_coin_amount);
 
     let r = positions_book.close_position(
         open_position.liquidation_index,
@@ -186,6 +171,26 @@ pub fn process_close_position(
         }
         Err(e) => Err(e).unwrap(),
     }
+
+    // User account owner verification delay to allow for permissionless purging of liquidated positions.
+
+    if *accounts.user_account_owner.key != Pubkey::new(&user_account_header.owner) {
+        msg!("The user account owner is invalid");
+        return Err(ProgramError::InvalidArgument);
+    }
+
+    let clock = Clock::from_account_info(accounts.clock_sysvar)?;
+    let current_timestamp = clock.unix_timestamp;
+
+    let oracle_price = get_oracle_price(
+        &accounts.oracle.data.borrow(),
+        market_state.coin_decimals,
+        market_state.quote_decimals,
+    )?;
+    let mut closing_collateral_ltd = core::cmp::min(closing_collateral, open_position.collateral);
+
+    let closing_v_coin_ltd = core::cmp::min(closing_v_coin, open_position.v_coin_amount);
+
     let side_sign = open_position.side.get_sign();
 
     let signed_closing_v_coin = side_sign * (closing_v_coin_ltd as i64);
@@ -238,7 +243,7 @@ pub fn process_close_position(
             .checked_div(closing_v_coin_ltd as u128)
             .unwrap_or(0),
         closing_v_coin_ltd,
-        open_position.side
+        open_position.side,
     );
 
     let payout_ltd = core::cmp::max(payout, 0) as u64;
@@ -292,6 +297,10 @@ pub fn process_close_position(
             open_position.v_pc_amount,
             open_position.side,
             market_state.get_k(),
+        );
+        println!(
+            "Liquidation index for this position: {:?}",
+            new_liquidation_index
         );
         let preliquidation = match open_position.side {
             PositionType::Long => new_liquidation_index >= oracle_price,

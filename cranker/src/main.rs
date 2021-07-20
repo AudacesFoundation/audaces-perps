@@ -45,6 +45,34 @@ fn main() {
                         }),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("liquidation-cleanup")
+                .about("Crank cleanup of liquidated positions for user accounts")
+                .arg(
+                    Arg::with_name("swarm_size")
+                        .long("swarm-size")
+                        .help("The number of nodes in the current cranking swarm")
+                        .takes_value(true)
+                        .default_value("1")
+                        .validator(|s| {
+                            s.parse::<u32>()
+                                .map(|_| ())
+                                .map_err(|_| String::from("The swarm size must be an integer"))
+                        }),
+                )
+                .arg(
+                    Arg::with_name("node_id")
+                        .long("node-id")
+                        .help("The integer node identifer within the swarm")
+                        .takes_value(true)
+                        .default_value("0")
+                        .validator(|s| {
+                            s.parse::<u32>().map(|_| ()).map_err(|_| {
+                                String::from("The integer node identifer  must be an integer")
+                            })
+                        }),
+                ),
+        )
         .arg(
             Arg::with_name("url")
                 .short("u")
@@ -112,6 +140,21 @@ fn main() {
                 .parse::<u8>()
                 .unwrap();
             context.crank_funding_extraction(swarm_size, node_id);
+        }
+        ("liquidation-cleanup", m) => {
+            let swarm_size = m
+                .unwrap()
+                .value_of("swarm_size")
+                .unwrap()
+                .parse::<u16>()
+                .unwrap();
+            let node_id = m
+                .unwrap()
+                .value_of("node_id")
+                .unwrap()
+                .parse::<u8>()
+                .unwrap();
+            context.crank_liquidation_cleanup(swarm_size, node_id);
         }
         _ => panic!("Invalid subcommand"),
     }

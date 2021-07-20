@@ -20,6 +20,7 @@ const SERVICES = [
   "funding",
   "garbage-collect",
   "liquidate",
+  "liquidation-cleanup",
 ];
 
 const SLACK_URL = process.env.SLACK_URL;
