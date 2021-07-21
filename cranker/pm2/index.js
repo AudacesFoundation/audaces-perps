@@ -3,9 +3,11 @@ const { spawn } = require("child_process");
 const fetch = require("node-fetch");
 const publicIp = require("public-ip");
 
-const FEE_PAYER = ""; // Path to your wallet file
+const FEE_PAYER = process.env.FEE_PAYER; // Path to your wallet file
 
-const ENDPOINT = ""; // RPC Endpoint
+const ENDPOINT = process.env.ENDPOINT; // RPC Endpoint
+
+const SLACK_URL = process.env.SLACK_URL; // Slack URL for notification (optional)
 
 const MARKETS = [
   {
@@ -22,8 +24,6 @@ const SERVICES = [
   "liquidate",
   "liquidation-cleanup",
 ];
-
-const SLACK_URL = process.env.SLACK_URL;
 
 const postSlack = async (message) => {
   if (!SLACK_URL || SLACK_URL == "") return;
