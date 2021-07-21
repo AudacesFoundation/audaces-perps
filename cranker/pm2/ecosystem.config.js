@@ -24,5 +24,11 @@ module.exports = {
       args: "garbage-collect",
       watch: ".",
     },
+    {
+      name: "liquidation_cleanup",
+      script: "./index.js",
+      args: "liquidation-cleanup",
+      watch: ".",
+    },
   ],
 };
