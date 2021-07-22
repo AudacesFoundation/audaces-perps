@@ -15,6 +15,11 @@ const MARKETS = [
     programId: "perpke6JybKfRDitCmnazpCrGN5JRApxxukhA9Js6E6",
     name: "BTC/USDC",
   },
+  {
+    market: "3ds9ZtmQfHED17tXShfC1xEsZcfCvmT8huNG79wa4MHg",
+    programId: "perpke6JybKfRDitCmnazpCrGN5JRApxxukhA9Js6E6",
+    name: "ETH/USDC",
+  },
 ];
 
 const SERVICES = [
