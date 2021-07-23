@@ -298,7 +298,7 @@ pub fn process_close_position(
             open_position.side,
             market_state.get_k(),
         );
-        println!(
+        msg!(
             "Liquidation index for this position: {:?}",
             new_liquidation_index
         );
