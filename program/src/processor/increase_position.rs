@@ -221,7 +221,7 @@ pub fn process_increase_position(
         market_state.get_k(),
     );
 
-    println!(
+    msg!(
         "Liquidation index for this position: {:?}",
         new_liquidation_index
     );
