@@ -504,8 +504,7 @@ export const getOpenPositions = async (
  * Get all the information of a trade from its tx.
  *
  * @param connection The solana connection object to the RPC node.
- * @param wallet The wallet to credit the USDC to.
- * @param marketAddress The address of the market.
+ * @param tx The tx of the trade
  * @returns A PastTrade object.
  */
 export const getTradeInfoFromTx = async (
