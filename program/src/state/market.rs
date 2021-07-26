@@ -183,7 +183,7 @@ impl MarketState {
         if -side_sign * current_market_bias > REBALANCING_MARGIN {
             let mut rebalancing_contribution_v_coin;
             let mut rebalancing_contribution_pc = 0;
-            if (side_sign * self.rebalanced_v_coin) < 0 {
+            if (side_sign * self.rebalanced_v_coin) > 0 {
                 // Close the Vamm's opposite position
                 rebalancing_contribution_v_coin = side_sign
                     * core::cmp::min(balanced_v_coin_to_add.abs(), self.rebalanced_v_coin.abs());
