@@ -523,7 +523,7 @@ pub fn get_market_data(
     }
 
     let mut gc_list_lengths = Vec::with_capacity(market_state.number_of_instances as usize);
-    let mut page_full_ratios = vec![vec![]];
+    let mut page_full_ratios = Vec::with_capacity(market_state.number_of_instances as usize);
     for (instance, page_infos) in &instances {
         let mut page_datas = page_infos
             .iter()
