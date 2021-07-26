@@ -41,7 +41,10 @@ pub const FUNDING_EXTRACTION_LABEL: &str = "FundingExtraction1111111111111111111
 
 pub const MAX_LEVERAGE: u64 = 20 << 32;
 pub const MAX_POSITION_SIZE: u64 = 500_000_000_000; // in USDC
+#[cfg(not(feature = "mock-oracle"))]
 pub const MAX_OPEN_POSITONS_PER_USER: u32 = 20;
+#[cfg(feature = "mock-oracle")]
+pub const MAX_OPEN_POSITONS_PER_USER: u32 = u32::MAX;
 
 // Fees
 pub const FEE_BUY_BURN_BONFIDA: u64 = 30; // Percentage of total fee
