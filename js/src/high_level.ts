@@ -286,10 +286,17 @@ export const increasePositionBaseSize = async (
   referrerAccount: PublicKey | undefined = undefined
 ): Promise<PrimedTransaction> => {
   const marketState = await getMarketState(connection, position.marketAddress);
-  const markPrice = marketState.getMarkPrice();
-  const targetLeverage =
-    (markPrice * (size + position.vCoinAmount)) / position.collateral;
-  const amountToWithdraw = (size * markPrice) / targetLeverage;
+  let sideSign = position.side === "long" ? 1 : -1;
+  let targetSize = size + position.vCoinAmount;
+  const targetPositionQuoteSize =
+    (targetSize * marketState.vQuoteAmount) /
+    (marketState.vCoinAmount + sideSign * targetSize);
+  const targetLeverage = targetPositionQuoteSize / position.collateral;
+  const currentQuoteSize =
+    (position.vCoinAmount * marketState.vQuoteAmount) /
+    (marketState.vCoinAmount + sideSign * position.vCoinAmount);
+  const amountToWithdraw =
+    position.collateral - currentQuoteSize / targetLeverage;
   const discountAccount = await getDiscountAccount(connection, wallet);
   const [signersClose, instructionsClose] = await closePosition(
     connection,
@@ -470,19 +477,24 @@ export const getOpenPositions = async (
   let positions: Position[] = [];
   const _positions = await getOrders(connection, wallet);
   for (let pos of _positions) {
-    const markPrice = await (
-      await getMarketState(connection, pos.market)
-    ).getMarkPrice();
+    const marketState = await getMarketState(connection, pos.market);
     const entryPrice = pos.position.vPcAmount / pos.position.vCoinAmount;
     const leverage = pos.position.vPcAmount / pos.position.collateral;
+    const pnl =
+      pos.position.side === 1
+        ? (pos.position.vCoinAmount * marketState.vQuoteAmount) /
+            (marketState.vCoinAmount + pos.position.vCoinAmount) +
+          pos.position.collateral -
+          pos.position.vPcAmount
+        : pos.position.vPcAmount -
+          (pos.position.vCoinAmount * marketState.vQuoteAmount) /
+            (marketState.vCoinAmount - pos.position.vCoinAmount) +
+          pos.position.collateral;
     const size = pos.position.vCoinAmount;
     const position = {
       side: pos.position.side === 1 ? "long" : "short",
       size: size,
-      pnl:
-        pos.position.side === 1
-          ? (markPrice - entryPrice) * size
-          : (entryPrice - markPrice) * size,
+      pnl,
       leverage: leverage,
       liqPrice: pos.position.liquidationIndex,
       entryPrice: entryPrice,
