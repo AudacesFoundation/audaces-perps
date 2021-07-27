@@ -474,9 +474,7 @@ export const getOpenPositions = async (
       await getMarketState(connection, pos.market)
     ).getMarkPrice();
     const entryPrice = pos.position.vPcAmount / pos.position.vCoinAmount;
-    const leverage = Math.floor(
-      pos.position.vPcAmount / pos.position.collateral
-    );
+    const leverage = pos.position.vPcAmount / pos.position.collateral;
     const size = pos.position.vCoinAmount;
     const position = {
       side: pos.position.side === 1 ? "long" : "short",
