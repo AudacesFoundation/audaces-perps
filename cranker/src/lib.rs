@@ -14,6 +14,7 @@ use futures::{
     stream::{self, Iter},
     StreamExt,
 };
+use solana_account_decoder::UiAccountEncoding;
 use solana_client::{
     rpc_client::RpcClient,
     rpc_config::RpcAccountInfoConfig,
@@ -508,7 +509,7 @@ fn get_node_filters(
                     }),
                 ]),
                 account_config: RpcAccountInfoConfig {
-                    encoding: None,
+                    encoding: Some(UiAccountEncoding::Base64),
                     data_slice: None,
                     commitment: None,
                 },
@@ -546,7 +547,7 @@ fn get_node_filters(
                 }),
             ]),
             account_config: RpcAccountInfoConfig {
-                encoding: None,
+                encoding: Some(UiAccountEncoding::Base64),
                 data_slice: None,
                 commitment: None,
             },
