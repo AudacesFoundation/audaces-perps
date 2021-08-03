@@ -28,7 +28,6 @@ export interface Fees {
   total: number;
   refundable: number;
   fixed: number;
-  liquidation: number;
 }
 export interface PastInstruction {
   instruction: PerpInstruction;
@@ -43,6 +42,7 @@ export interface PastInstruction {
 
 export interface PastTrade {
   instruction: PastInstruction;
+  marketAddress: PublicKey | undefined;
   markPrice?: number;
   orderSize?: number;
   side?: number;
