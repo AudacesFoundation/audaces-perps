@@ -238,7 +238,7 @@ export async function getPastInstructions(
 const getFees = (logs: string[] | null | undefined) => {
   if (!logs) return;
   const regex =
-    /Fees : Fees { total: (?<total>.*), refundable: (?<refundable>.*), fixed: (?<fixed>.*), liquidation_fee: (?<liquidation>.*) }/;
+    /Fees : Fees { total: (?<total>.*), refundable: (?<refundable>.*), fixed: (?<fixed>.*) }/;
   for (let log of logs) {
     let result = log.match(regex);
     if (!!result?.groups) {
@@ -247,7 +247,6 @@ const getFees = (logs: string[] | null | undefined) => {
         total: parseInt(result.groups.total),
         refundable: parseInt(result.groups.refundable),
         fixed: parseInt(result.groups.fixed),
-        liquidation: parseInt(result.groups.liquidation),
       };
       return fees;
     }
@@ -334,7 +333,13 @@ export async function getPastTrades(
     );
   });
   console.log("Filtered length: ", filtered.length);
-  let parsed = filtered.map(parseRawInstruction).map(extractTradeInfo);
+  let parsed = filtered
+    .map(parseRawInstruction)
+    .map(extractTradeInfo)
+    .map((t) => {
+      t.marketAddress = marketAddress;
+      return t;
+    });
   return parsed;
 }
 
@@ -410,6 +415,7 @@ function extractTradeInfo(i: PastInstruction): PastTrade {
   }
   return {
     instruction: i,
+    marketAddress: undefined,
     markPrice,
     orderSize,
     side,
