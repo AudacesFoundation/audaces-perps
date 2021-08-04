@@ -1,19 +1,10 @@
-use std::str::FromStr;
-
 use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
-    sysvar::clock,
-};
+use solana_program::{instruction::Instruction, pubkey::Pubkey};
 
 #[cfg(feature = "fuzz")]
 use arbitrary::Arbitrary;
 
-use crate::{
-    processor::{FUNDING_EXTRACTION_LABEL, FUNDING_LABEL, LIQUIDATION_LABEL, TRADE_LABEL},
-    state::PositionType,
-};
+use crate::state::PositionType;
 #[repr(C)]
 #[cfg_attr(feature = "fuzz", derive(Arbitrary))]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
@@ -303,27 +294,18 @@ pub fn create_market(
     coin_decimals: u8,
     quote_decimals: u8,
 ) -> Instruction {
-    let instruction_data = PerpInstruction::CreateMarket {
-        signer_nonce: ctx.signer_nonce,
+    cpi::create_market(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.oracle_account,
+        ctx.admin_account,
+        ctx.market_vault,
         market_symbol,
+        ctx.signer_nonce,
         initial_v_pc_amount,
         coin_decimals,
         quote_decimals,
-    };
-    let data = instruction_data.try_to_vec().unwrap();
-    let accounts = vec![
-        AccountMeta::new(ctx.market_account, false),
-        AccountMeta::new_readonly(clock::id(), false),
-        AccountMeta::new_readonly(ctx.oracle_account, false),
-        AccountMeta::new_readonly(ctx.admin_account, false),
-        AccountMeta::new_readonly(ctx.market_vault, false),
-    ];
-
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+    )
 }
 
 pub fn update_oracle_account(
@@ -332,20 +314,13 @@ pub fn update_oracle_account(
     pyth_oracle_product_account: Pubkey,
     pyth_oracle_price_account: Pubkey,
 ) -> Instruction {
-    let instruction_data = PerpInstruction::UpdateOracleAccount;
-    let data = instruction_data.try_to_vec().unwrap();
-    let accounts = vec![
-        AccountMeta::new(ctx.market_account, false),
-        AccountMeta::new_readonly(pyth_oracle_mapping_account, false),
-        AccountMeta::new_readonly(pyth_oracle_product_account, false),
-        AccountMeta::new_readonly(pyth_oracle_price_account, false),
-    ];
-
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+    cpi::update_oracle_account(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        pyth_oracle_mapping_account,
+        pyth_oracle_product_account,
+        pyth_oracle_price_account,
+    )
 }
 
 pub fn add_instance(
@@ -353,21 +328,13 @@ pub fn add_instance(
     instance_account: Pubkey,
     memory_pages: &[Pubkey],
 ) -> Instruction {
-    let instruction_data = PerpInstruction::AddInstance;
-    let data = instruction_data.try_to_vec().unwrap();
-    let mut accounts = Vec::with_capacity(3 + memory_pages.len());
-    accounts.push(AccountMeta::new(ctx.market_account, false));
-    accounts.push(AccountMeta::new(ctx.admin_account, true));
-    accounts.push(AccountMeta::new(instance_account, false));
-
-    for p in memory_pages {
-        accounts.push(AccountMeta::new(*p, false))
-    }
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+    cpi::add_instance(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.admin_account,
+        instance_account,
+        memory_pages,
+    )
 }
 
 pub fn add_budget(
@@ -377,22 +344,15 @@ pub fn add_budget(
     source_token_account: Pubkey,
     open_positions_account: Pubkey,
 ) -> Instruction {
-    let instruction_data = PerpInstruction::AddBudget { amount };
-    let data = instruction_data.try_to_vec().unwrap();
-    let accounts = vec![
-        AccountMeta::new_readonly(spl_token::id(), false),
-        AccountMeta::new(ctx.market_account, false),
-        AccountMeta::new(ctx.market_vault, false),
-        AccountMeta::new(open_positions_account, false),
-        AccountMeta::new_readonly(source_owner, true),
-        AccountMeta::new(source_token_account, false),
-    ];
-
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+    cpi::add_budget(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.market_vault,
+        amount,
+        source_owner,
+        source_token_account,
+        open_positions_account,
+    )
 }
 
 pub fn withdraw_budget(
@@ -402,23 +362,16 @@ pub fn withdraw_budget(
     open_positions_owner_account: Pubkey,
     open_positions_account: Pubkey,
 ) -> Instruction {
-    let instruction_data = PerpInstruction::WithdrawBudget { amount };
-    let data = instruction_data.try_to_vec().unwrap();
-    let accounts = vec![
-        AccountMeta::new_readonly(spl_token::id(), false),
-        AccountMeta::new(ctx.market_account, false),
-        AccountMeta::new_readonly(ctx.market_signer_account, false),
-        AccountMeta::new(ctx.market_vault, false),
-        AccountMeta::new_readonly(open_positions_owner_account, true),
-        AccountMeta::new(open_positions_account, false),
-        AccountMeta::new(target_account, false),
-    ];
-
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+    cpi::withdraw_budget(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.market_signer_account,
+        ctx.market_vault,
+        amount,
+        target_account,
+        open_positions_owner_account,
+        open_positions_account,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -433,49 +386,26 @@ pub fn open_position(
     referrer_account_opt: Option<Pubkey>,
 ) -> Instruction {
     let instance = &ctx.instances[position.instance_index as usize];
-    let instruction_data = PerpInstruction::OpenPosition {
-        side: position.side,
+    cpi::open_position(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.market_signer_account,
+        ctx.market_vault,
+        ctx.oracle_account,
+        instance.instance_account,
+        position.user_account,
+        position.user_account_owner,
+        ctx.bonfida_bnb,
+        &instance.memory_pages,
+        position.side,
+        position.instance_index,
         collateral,
-        instance_index: position.instance_index,
         leverage,
         predicted_entry_price,
         maximum_slippage_margin,
-    };
-    let data = instruction_data.try_to_vec().unwrap();
-    let mut accounts = Vec::with_capacity(13);
-
-    accounts.push(AccountMeta::new_readonly(spl_token::id(), false));
-    accounts.push(AccountMeta::new_readonly(clock::id(), false));
-    accounts.push(AccountMeta::new(ctx.market_account, false));
-    accounts.push(AccountMeta::new(instance.instance_account, false));
-    accounts.push(AccountMeta::new_readonly(ctx.market_signer_account, false));
-    accounts.push(AccountMeta::new(ctx.market_vault, false));
-    accounts.push(AccountMeta::new(ctx.bonfida_bnb, false));
-    accounts.push(AccountMeta::new_readonly(position.user_account_owner, true));
-    accounts.push(AccountMeta::new(position.user_account, false));
-    accounts.push(AccountMeta::new_readonly(
-        Pubkey::from_str(TRADE_LABEL).unwrap(),
-        false,
-    ));
-    accounts.push(AccountMeta::new_readonly(ctx.oracle_account, false));
-
-    for p in &instance.memory_pages {
-        accounts.push(AccountMeta::new(*p, false))
-    }
-
-    if let Some(d) = discount_account_opt {
-        accounts.push(AccountMeta::new_readonly(d.address, false));
-        accounts.push(AccountMeta::new_readonly(d.owner, true));
-    }
-    if let Some(referrer_account) = referrer_account_opt {
-        accounts.push(AccountMeta::new(referrer_account, false));
-    }
-
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+        discount_account_opt,
+        referrer_account_opt,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -485,57 +415,34 @@ pub fn increase_position(
     leverage: u64, // 32 bit FP
     instance_index: u8,
     position_index: u16,
-    position_owner: Pubkey,
-    open_positions_account: Pubkey,
+    user_account_owner: Pubkey,
+    user_account: Pubkey,
     predicted_entry_price: u64,                     // 32 bit FP
     maximum_slippage_margin: u64,                   // 32 bit FP
     discount_account_opt: Option<&DiscountAccount>, // To specify if discount account is present
     referrer_account_opt: Option<Pubkey>,
 ) -> Instruction {
     let instance = &ctx.instances[instance_index as usize];
-    let instruction_data = PerpInstruction::IncreasePosition {
-        instance_index,
+    cpi::increase_position(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.market_signer_account,
+        ctx.market_vault,
+        ctx.oracle_account,
+        instance.instance_account,
+        user_account,
+        user_account_owner,
+        ctx.bonfida_bnb,
+        &instance.memory_pages,
         add_collateral,
-        position_index,
         leverage,
+        instance_index,
+        position_index,
         predicted_entry_price,
         maximum_slippage_margin,
-    };
-    let data = instruction_data.try_to_vec().unwrap();
-    let mut accounts = Vec::with_capacity(5 + instance.memory_pages.len());
-
-    accounts.push(AccountMeta::new_readonly(spl_token::id(), false));
-    accounts.push(AccountMeta::new_readonly(clock::id(), false));
-    accounts.push(AccountMeta::new(ctx.market_account, false));
-    accounts.push(AccountMeta::new_readonly(ctx.market_signer_account, false));
-    accounts.push(AccountMeta::new(ctx.market_vault, false));
-    accounts.push(AccountMeta::new(ctx.bonfida_bnb, false));
-    accounts.push(AccountMeta::new(instance.instance_account, false));
-    accounts.push(AccountMeta::new_readonly(position_owner, true));
-    accounts.push(AccountMeta::new(open_positions_account, false));
-    accounts.push(AccountMeta::new_readonly(
-        Pubkey::from_str(TRADE_LABEL).unwrap(),
-        false,
-    ));
-    accounts.push(AccountMeta::new_readonly(ctx.oracle_account, false));
-
-    for p in &instance.memory_pages {
-        accounts.push(AccountMeta::new(*p, false))
-    }
-
-    if let Some(d) = discount_account_opt {
-        accounts.push(AccountMeta::new_readonly(d.address, false));
-        accounts.push(AccountMeta::new_readonly(d.owner, true));
-    }
-    if let Some(referrer_account) = referrer_account_opt {
-        accounts.push(AccountMeta::new(referrer_account, false));
-    }
-
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+        discount_account_opt,
+        referrer_account_opt,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -551,49 +458,25 @@ pub fn close_position(
     referrer_account_opt: Option<Pubkey>,
 ) -> Instruction {
     let instance = &ctx.instances[position_info.instance_index as usize];
-    let instruction_data = PerpInstruction::ClosePosition {
+    cpi::close_position(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.market_signer_account,
+        ctx.market_vault,
+        ctx.oracle_account,
+        instance.instance_account,
+        position_info.user_account,
+        position_info.user_account_owner,
+        ctx.bonfida_bnb,
+        &instance.memory_pages,
         closing_collateral,
         closing_v_coin,
         position_index,
         predicted_entry_price,
         maximum_slippage_margin,
-    };
-    let data = instruction_data.try_to_vec().unwrap();
-    let mut accounts = Vec::with_capacity(13 + instance.memory_pages.len());
-    accounts.push(AccountMeta::new_readonly(spl_token::id(), false));
-    accounts.push(AccountMeta::new_readonly(clock::id(), false));
-    accounts.push(AccountMeta::new(ctx.market_account, false));
-    accounts.push(AccountMeta::new(instance.instance_account, false));
-    accounts.push(AccountMeta::new_readonly(ctx.market_signer_account, false));
-    accounts.push(AccountMeta::new(ctx.market_vault, false));
-    accounts.push(AccountMeta::new(ctx.bonfida_bnb, false));
-    accounts.push(AccountMeta::new_readonly(ctx.oracle_account, false));
-    accounts.push(AccountMeta::new_readonly(
-        position_info.user_account_owner,
-        true,
-    ));
-    accounts.push(AccountMeta::new(position_info.user_account, false));
-    accounts.push(AccountMeta::new_readonly(
-        Pubkey::from_str(TRADE_LABEL).unwrap(),
-        false,
-    ));
-
-    for p in &instance.memory_pages {
-        accounts.push(AccountMeta::new(*p, false))
-    }
-    if let Some(d) = discount_account {
-        accounts.push(AccountMeta::new_readonly(d.address, false));
-        accounts.push(AccountMeta::new_readonly(d.owner, true));
-    }
-    if let Some(referrer_account) = referrer_account_opt {
-        accounts.push(AccountMeta::new(referrer_account, false));
-    }
-
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+        discount_account,
+        referrer_account_opt,
+    )
 }
 
 pub fn collect_garbage(
@@ -603,28 +486,17 @@ pub fn collect_garbage(
     target_token_account: Pubkey,
 ) -> Instruction {
     let instance = &ctx.instances[instance_index as usize];
-    let instruction_data = PerpInstruction::CollectGarbage {
+    cpi::collect_garbage(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.market_signer_account,
+        ctx.market_vault,
+        instance.instance_account,
+        &instance.memory_pages,
         instance_index,
         max_iterations,
-    };
-    let data = instruction_data.try_to_vec().unwrap();
-    let mut accounts = Vec::with_capacity(6 + instance.memory_pages.len());
-
-    accounts.push(AccountMeta::new_readonly(spl_token::id(), false));
-    accounts.push(AccountMeta::new(ctx.market_account, false));
-    accounts.push(AccountMeta::new(instance.instance_account, false));
-    accounts.push(AccountMeta::new(ctx.market_vault, false));
-    accounts.push(AccountMeta::new_readonly(ctx.market_signer_account, false));
-    accounts.push(AccountMeta::new(target_token_account, false));
-
-    for p in &instance.memory_pages {
-        accounts.push(AccountMeta::new(*p, false))
-    }
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+        target_token_account,
+    )
 }
 
 pub fn crank_liquidation(
@@ -633,48 +505,26 @@ pub fn crank_liquidation(
     target_token_account: Pubkey,
 ) -> Instruction {
     let instance = &ctx.instances[instance_index as usize];
-    let instruction_data = PerpInstruction::CrankLiquidation { instance_index };
-    let data = instruction_data.try_to_vec().unwrap();
-    let mut accounts = Vec::with_capacity(7 + instance.memory_pages.len());
-
-    accounts.push(AccountMeta::new_readonly(spl_token::id(), false));
-    accounts.push(AccountMeta::new(ctx.market_account, false));
-    accounts.push(AccountMeta::new(instance.instance_account, false));
-    accounts.push(AccountMeta::new_readonly(ctx.market_signer_account, false));
-    accounts.push(AccountMeta::new(ctx.bonfida_bnb, false));
-    accounts.push(AccountMeta::new(ctx.market_vault, false));
-    accounts.push(AccountMeta::new_readonly(ctx.oracle_account, false));
-    accounts.push(AccountMeta::new(target_token_account, false));
-    accounts.push(AccountMeta::new_readonly(
-        Pubkey::from_str(LIQUIDATION_LABEL).unwrap(),
-        false,
-    ));
-
-    for p in &instance.memory_pages {
-        accounts.push(AccountMeta::new(*p, false))
-    }
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+    cpi::crank_liquidation(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.market_signer_account,
+        ctx.market_vault,
+        ctx.oracle_account,
+        instance.instance_account,
+        ctx.bonfida_bnb,
+        &instance.memory_pages,
+        instance_index,
+        target_token_account,
+    )
 }
 
 pub fn crank_funding(ctx: &MarketContext) -> Instruction {
-    let instruction_data = PerpInstruction::CrankFunding;
-    let data = instruction_data.try_to_vec().unwrap();
-    let accounts = vec![
-        AccountMeta::new_readonly(clock::id(), false),
-        AccountMeta::new(ctx.market_account, false),
-        AccountMeta::new_readonly(ctx.oracle_account, false),
-        AccountMeta::new_readonly(Pubkey::from_str(FUNDING_LABEL).unwrap(), false),
-    ];
-
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+    cpi::crank_funding(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.oracle_account,
+    )
 }
 
 pub fn extract_funding(
@@ -683,38 +533,24 @@ pub fn extract_funding(
     open_positions_account: Pubkey,
 ) -> Instruction {
     let instance = &ctx.instances[instance_index as usize];
-    let instruction_data = PerpInstruction::FundingExtraction { instance_index };
-    let data = instruction_data.try_to_vec().unwrap();
-    let mut accounts = Vec::with_capacity(7 + instance.memory_pages.len());
-    accounts.push(AccountMeta::new(ctx.market_account, false));
-    accounts.push(AccountMeta::new(instance.instance_account, false));
-    accounts.push(AccountMeta::new(open_positions_account, false));
-    accounts.push(AccountMeta::new_readonly(
-        Pubkey::from_str(FUNDING_EXTRACTION_LABEL).unwrap(),
-        false,
-    ));
-    accounts.push(AccountMeta::new_readonly(ctx.oracle_account, false));
-    for p in &instance.memory_pages {
-        accounts.push(AccountMeta::new(*p, false))
-    }
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+    cpi::extract_funding(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.oracle_account,
+        instance.instance_account,
+        &instance.memory_pages,
+        instance_index,
+        open_positions_account,
+    )
 }
 
 pub fn change_k(ctx: &MarketContext, factor: u64) -> Instruction {
-    let data = PerpInstruction::ChangeK { factor }.try_to_vec().unwrap();
-    let accounts = vec![
-        AccountMeta::new(ctx.market_account, false),
-        AccountMeta::new_readonly(ctx.admin_account, true),
-    ];
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+    cpi::change_k(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.admin_account,
+        factor,
+    )
 }
 
 pub fn close_account(
@@ -723,37 +559,23 @@ pub fn close_account(
     user_account_owner: Pubkey,
     lamports_target: Pubkey,
 ) -> Instruction {
-    let data = PerpInstruction::CloseAccount.try_to_vec().unwrap();
-    let accounts = vec![
-        AccountMeta::new(user_account, false),
-        AccountMeta::new_readonly(user_account_owner, true),
-        AccountMeta::new(lamports_target, false),
-    ];
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+    cpi::close_account(
+        ctx.audaces_protocol_program_id,
+        user_account,
+        user_account_owner,
+        lamports_target,
+    )
 }
 
 pub fn add_page(ctx: &MarketContext, instance_index: u8, new_memory_page: Pubkey) -> Instruction {
-    let instruction_data = PerpInstruction::AddPage { instance_index };
-    let data = instruction_data.try_to_vec().unwrap();
-    let accounts = vec![
-        AccountMeta::new_readonly(ctx.market_account, false),
-        AccountMeta::new_readonly(ctx.admin_account, true),
-        AccountMeta::new(
-            ctx.instances[instance_index as usize].instance_account,
-            false,
-        ),
-        AccountMeta::new_readonly(new_memory_page, false),
-    ];
-
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+    cpi::add_page(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.admin_account,
+        ctx.instances[instance_index as usize].instance_account,
+        instance_index,
+        new_memory_page,
+    )
 }
 
 pub fn rebalance(
@@ -764,33 +586,20 @@ pub fn rebalance(
     collateral: u64,
 ) -> Instruction {
     let instance = &ctx.instances[instance_index as usize];
-    let data = PerpInstruction::Rebalance {
-        collateral,
+    cpi::rebalance(
+        ctx.audaces_protocol_program_id,
+        ctx.market_account,
+        ctx.market_signer_account,
+        ctx.market_vault,
+        ctx.admin_account,
+        instance.instance_account,
+        user_account,
+        user_account_owner,
+        ctx.bonfida_bnb,
+        &instance.memory_pages,
         instance_index,
-    }
-    .try_to_vec()
-    .unwrap();
-    let mut accounts = vec![
-        AccountMeta::new_readonly(spl_token::id(), false),
-        AccountMeta::new_readonly(clock::id(), false),
-        AccountMeta::new(ctx.market_account, false),
-        AccountMeta::new(ctx.instances[0].instance_account, false),
-        AccountMeta::new_readonly(ctx.market_signer_account, false),
-        AccountMeta::new(ctx.market_vault, false),
-        AccountMeta::new(ctx.bonfida_bnb, false),
-        AccountMeta::new_readonly(user_account_owner, true),
-        AccountMeta::new(user_account, false),
-        AccountMeta::new_readonly(ctx.admin_account, true),
-    ];
-
-    for p in &instance.memory_pages {
-        accounts.push(AccountMeta::new(*p, false))
-    }
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+        collateral,
+    )
 }
 
 pub fn transfer_user_account(
@@ -799,20 +608,12 @@ pub fn transfer_user_account(
     user_account_owner: Pubkey,
     new_user_account_owner: Pubkey,
 ) -> Instruction {
-    let data = PerpInstruction::TransferUserAccount {}
-        .try_to_vec()
-        .unwrap();
-    let accounts = vec![
-        AccountMeta::new_readonly(user_account_owner, true),
-        AccountMeta::new(user_account, false),
-        AccountMeta::new_readonly(new_user_account_owner, false),
-    ];
-
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
-    }
+    cpi::transfer_user_account(
+        ctx.audaces_protocol_program_id,
+        user_account,
+        user_account_owner,
+        new_user_account_owner,
+    )
 }
 
 pub fn transfer_position(
@@ -823,19 +624,641 @@ pub fn transfer_position(
     destination_user_account: Pubkey,
     destination_user_account_owner: Pubkey,
 ) -> Instruction {
-    let data = PerpInstruction::TransferPosition { position_index }
+    cpi::transfer_position(
+        ctx.audaces_protocol_program_id,
+        position_index,
+        source_user_account,
+        source_user_account_owner,
+        destination_user_account,
+        destination_user_account_owner,
+    )
+}
+
+pub mod cpi {
+    use std::str::FromStr;
+
+    use crate::{
+        processor::{FUNDING_EXTRACTION_LABEL, FUNDING_LABEL, LIQUIDATION_LABEL, TRADE_LABEL},
+        state::PositionType,
+    };
+
+    use super::{DiscountAccount, PerpInstruction};
+    use borsh::BorshSerialize;
+    use solana_program::{
+        instruction::{AccountMeta, Instruction},
+        pubkey::Pubkey,
+        sysvar::clock,
+    };
+
+    #[allow(clippy::clippy::too_many_arguments)]
+    pub fn create_market(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        oracle_account: Pubkey,
+        admin_account: Pubkey,
+        market_vault: Pubkey,
+        market_symbol: String,
+        signer_nonce: u8,
+        initial_v_pc_amount: u64,
+        coin_decimals: u8,
+        quote_decimals: u8,
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::CreateMarket {
+            signer_nonce,
+            market_symbol,
+            initial_v_pc_amount,
+            coin_decimals,
+            quote_decimals,
+        };
+        let data = instruction_data.try_to_vec().unwrap();
+        let accounts = vec![
+            AccountMeta::new(market_account, false),
+            AccountMeta::new_readonly(clock::id(), false),
+            AccountMeta::new_readonly(oracle_account, false),
+            AccountMeta::new_readonly(admin_account, false),
+            AccountMeta::new_readonly(market_vault, false),
+        ];
+
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+
+    pub fn update_oracle_account(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        pyth_oracle_mapping_account: Pubkey,
+        pyth_oracle_product_account: Pubkey,
+        pyth_oracle_price_account: Pubkey,
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::UpdateOracleAccount;
+        let data = instruction_data.try_to_vec().unwrap();
+        let accounts = vec![
+            AccountMeta::new(market_account, false),
+            AccountMeta::new_readonly(pyth_oracle_mapping_account, false),
+            AccountMeta::new_readonly(pyth_oracle_product_account, false),
+            AccountMeta::new_readonly(pyth_oracle_price_account, false),
+        ];
+
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+
+    pub fn add_instance(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        admin_account: Pubkey,
+        instance_account: Pubkey,
+        memory_pages: &[Pubkey],
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::AddInstance;
+        let data = instruction_data.try_to_vec().unwrap();
+        let mut accounts = Vec::with_capacity(3 + memory_pages.len());
+        accounts.push(AccountMeta::new(market_account, false));
+        accounts.push(AccountMeta::new(admin_account, true));
+        accounts.push(AccountMeta::new(instance_account, false));
+
+        for p in memory_pages {
+            accounts.push(AccountMeta::new(*p, false))
+        }
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+
+    pub fn add_budget(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        market_vault: Pubkey,
+        amount: u64,
+        source_owner: Pubkey,
+        source_token_account: Pubkey,
+        open_positions_account: Pubkey,
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::AddBudget { amount };
+        let data = instruction_data.try_to_vec().unwrap();
+        let accounts = vec![
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new(market_account, false),
+            AccountMeta::new(market_vault, false),
+            AccountMeta::new(open_positions_account, false),
+            AccountMeta::new_readonly(source_owner, true),
+            AccountMeta::new(source_token_account, false),
+        ];
+
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+
+    #[allow(clippy::clippy::too_many_arguments)]
+    pub fn withdraw_budget(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        market_signer_account: Pubkey,
+        market_vault: Pubkey,
+        amount: u64,
+        target_account: Pubkey,
+        open_positions_owner_account: Pubkey,
+        open_positions_account: Pubkey,
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::WithdrawBudget { amount };
+        let data = instruction_data.try_to_vec().unwrap();
+        let accounts = vec![
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new(market_account, false),
+            AccountMeta::new_readonly(market_signer_account, false),
+            AccountMeta::new(market_vault, false),
+            AccountMeta::new_readonly(open_positions_owner_account, true),
+            AccountMeta::new(open_positions_account, false),
+            AccountMeta::new(target_account, false),
+        ];
+
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn open_position(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        market_signer_account: Pubkey,
+        market_vault: Pubkey,
+        oracle_account: Pubkey,
+        instance_account: Pubkey,
+        user_account: Pubkey,
+        user_account_owner: Pubkey,
+        bonfida_bnb: Pubkey,
+        memory_pages: &[Pubkey],
+        side: PositionType,
+        instance_index: u8,
+        collateral: u64,
+        leverage: u64,
+        predicted_entry_price: u64,                     // 32 bit FP
+        maximum_slippage_margin: u64,                   // 32 bit FP
+        discount_account_opt: Option<&DiscountAccount>, // To specify if discount account is present
+        referrer_account_opt: Option<Pubkey>,
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::OpenPosition {
+            side,
+            collateral,
+            instance_index,
+            leverage,
+            predicted_entry_price,
+            maximum_slippage_margin,
+        };
+        let data = instruction_data.try_to_vec().unwrap();
+        let mut accounts = Vec::with_capacity(13);
+
+        accounts.push(AccountMeta::new_readonly(spl_token::id(), false));
+        accounts.push(AccountMeta::new_readonly(clock::id(), false));
+        accounts.push(AccountMeta::new(market_account, false));
+        accounts.push(AccountMeta::new(instance_account, false));
+        accounts.push(AccountMeta::new_readonly(market_signer_account, false));
+        accounts.push(AccountMeta::new(market_vault, false));
+        accounts.push(AccountMeta::new(bonfida_bnb, false));
+        accounts.push(AccountMeta::new_readonly(user_account_owner, true));
+        accounts.push(AccountMeta::new(user_account, false));
+        accounts.push(AccountMeta::new_readonly(
+            Pubkey::from_str(TRADE_LABEL).unwrap(),
+            false,
+        ));
+        accounts.push(AccountMeta::new_readonly(oracle_account, false));
+
+        for p in memory_pages {
+            accounts.push(AccountMeta::new(*p, false))
+        }
+
+        if let Some(d) = discount_account_opt {
+            accounts.push(AccountMeta::new_readonly(d.address, false));
+            accounts.push(AccountMeta::new_readonly(d.owner, true));
+        }
+        if let Some(referrer_account) = referrer_account_opt {
+            accounts.push(AccountMeta::new(referrer_account, false));
+        }
+
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn increase_position(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        market_signer_account: Pubkey,
+        market_vault: Pubkey,
+        oracle_account: Pubkey,
+        instance_account: Pubkey,
+        user_account: Pubkey,
+        user_account_owner: Pubkey,
+        bonfida_bnb: Pubkey,
+        memory_pages: &[Pubkey],
+        add_collateral: u64,
+        leverage: u64, // 32 bit FP
+        instance_index: u8,
+        position_index: u16,
+        predicted_entry_price: u64,                     // 32 bit FP
+        maximum_slippage_margin: u64,                   // 32 bit FP
+        discount_account_opt: Option<&DiscountAccount>, // To specify if discount account is present
+        referrer_account_opt: Option<Pubkey>,
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::IncreasePosition {
+            instance_index,
+            add_collateral,
+            position_index,
+            leverage,
+            predicted_entry_price,
+            maximum_slippage_margin,
+        };
+        let data = instruction_data.try_to_vec().unwrap();
+        let mut accounts = Vec::with_capacity(5 + memory_pages.len());
+
+        accounts.push(AccountMeta::new_readonly(spl_token::id(), false));
+        accounts.push(AccountMeta::new_readonly(clock::id(), false));
+        accounts.push(AccountMeta::new(market_account, false));
+        accounts.push(AccountMeta::new_readonly(market_signer_account, false));
+        accounts.push(AccountMeta::new(market_vault, false));
+        accounts.push(AccountMeta::new(bonfida_bnb, false));
+        accounts.push(AccountMeta::new(instance_account, false));
+        accounts.push(AccountMeta::new_readonly(user_account_owner, true));
+        accounts.push(AccountMeta::new(user_account, false));
+        accounts.push(AccountMeta::new_readonly(
+            Pubkey::from_str(TRADE_LABEL).unwrap(),
+            false,
+        ));
+        accounts.push(AccountMeta::new_readonly(oracle_account, false));
+
+        for p in memory_pages {
+            accounts.push(AccountMeta::new(*p, false))
+        }
+
+        if let Some(d) = discount_account_opt {
+            accounts.push(AccountMeta::new_readonly(d.address, false));
+            accounts.push(AccountMeta::new_readonly(d.owner, true));
+        }
+        if let Some(referrer_account) = referrer_account_opt {
+            accounts.push(AccountMeta::new(referrer_account, false));
+        }
+
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn close_position(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        market_signer_account: Pubkey,
+        market_vault: Pubkey,
+        oracle_account: Pubkey,
+        instance_account: Pubkey,
+        user_account: Pubkey,
+        user_account_owner: Pubkey,
+        bonfida_bnb: Pubkey,
+        memory_pages: &[Pubkey],
+        closing_collateral: u64,
+        closing_v_coin: u64,
+        position_index: u16,
+        predicted_entry_price: u64,                 // 32 bit FP
+        maximum_slippage_margin: u64,               // 32 bit FP
+        discount_account: Option<&DiscountAccount>, // To specify if discount account is present
+        referrer_account_opt: Option<Pubkey>,
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::ClosePosition {
+            closing_collateral,
+            closing_v_coin,
+            position_index,
+            predicted_entry_price,
+            maximum_slippage_margin,
+        };
+        let data = instruction_data.try_to_vec().unwrap();
+        let mut accounts = Vec::with_capacity(13 + memory_pages.len());
+        accounts.push(AccountMeta::new_readonly(spl_token::id(), false));
+        accounts.push(AccountMeta::new_readonly(clock::id(), false));
+        accounts.push(AccountMeta::new(market_account, false));
+        accounts.push(AccountMeta::new(instance_account, false));
+        accounts.push(AccountMeta::new_readonly(market_signer_account, false));
+        accounts.push(AccountMeta::new(market_vault, false));
+        accounts.push(AccountMeta::new(bonfida_bnb, false));
+        accounts.push(AccountMeta::new_readonly(oracle_account, false));
+        accounts.push(AccountMeta::new_readonly(user_account_owner, true));
+        accounts.push(AccountMeta::new(user_account, false));
+        accounts.push(AccountMeta::new_readonly(
+            Pubkey::from_str(TRADE_LABEL).unwrap(),
+            false,
+        ));
+
+        for p in memory_pages {
+            accounts.push(AccountMeta::new(*p, false))
+        }
+        if let Some(d) = discount_account {
+            accounts.push(AccountMeta::new_readonly(d.address, false));
+            accounts.push(AccountMeta::new_readonly(d.owner, true));
+        }
+        if let Some(referrer_account) = referrer_account_opt {
+            accounts.push(AccountMeta::new(referrer_account, false));
+        }
+
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+
+    #[allow(clippy::clippy::too_many_arguments)]
+    pub fn collect_garbage(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        market_signer_account: Pubkey,
+        market_vault: Pubkey,
+        instance_account: Pubkey,
+        memory_pages: &[Pubkey],
+        instance_index: u8,
+        max_iterations: u64,
+        target_token_account: Pubkey,
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::CollectGarbage {
+            instance_index,
+            max_iterations,
+        };
+        let data = instruction_data.try_to_vec().unwrap();
+        let mut accounts = Vec::with_capacity(6 + memory_pages.len());
+
+        accounts.push(AccountMeta::new_readonly(spl_token::id(), false));
+        accounts.push(AccountMeta::new(market_account, false));
+        accounts.push(AccountMeta::new(instance_account, false));
+        accounts.push(AccountMeta::new(market_vault, false));
+        accounts.push(AccountMeta::new_readonly(market_signer_account, false));
+        accounts.push(AccountMeta::new(target_token_account, false));
+
+        for p in memory_pages {
+            accounts.push(AccountMeta::new(*p, false))
+        }
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+
+    #[allow(clippy::clippy::too_many_arguments)]
+    pub fn crank_liquidation(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        market_signer_account: Pubkey,
+        market_vault: Pubkey,
+        oracle_account: Pubkey,
+        instance_account: Pubkey,
+        bonfida_bnb: Pubkey,
+        memory_pages: &[Pubkey],
+        instance_index: u8,
+        target_token_account: Pubkey,
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::CrankLiquidation { instance_index };
+        let data = instruction_data.try_to_vec().unwrap();
+        let mut accounts = Vec::with_capacity(7 + memory_pages.len());
+
+        accounts.push(AccountMeta::new_readonly(spl_token::id(), false));
+        accounts.push(AccountMeta::new(market_account, false));
+        accounts.push(AccountMeta::new(instance_account, false));
+        accounts.push(AccountMeta::new_readonly(market_signer_account, false));
+        accounts.push(AccountMeta::new(bonfida_bnb, false));
+        accounts.push(AccountMeta::new(market_vault, false));
+        accounts.push(AccountMeta::new_readonly(oracle_account, false));
+        accounts.push(AccountMeta::new(target_token_account, false));
+        accounts.push(AccountMeta::new_readonly(
+            Pubkey::from_str(LIQUIDATION_LABEL).unwrap(),
+            false,
+        ));
+
+        for p in memory_pages {
+            accounts.push(AccountMeta::new(*p, false))
+        }
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+    #[allow(clippy::clippy::too_many_arguments)]
+    pub fn crank_funding(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        oracle_account: Pubkey,
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::CrankFunding;
+        let data = instruction_data.try_to_vec().unwrap();
+        let accounts = vec![
+            AccountMeta::new_readonly(clock::id(), false),
+            AccountMeta::new(market_account, false),
+            AccountMeta::new_readonly(oracle_account, false),
+            AccountMeta::new_readonly(Pubkey::from_str(FUNDING_LABEL).unwrap(), false),
+        ];
+
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+    #[allow(clippy::clippy::too_many_arguments)]
+    pub fn extract_funding(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        oracle_account: Pubkey,
+        instance_account: Pubkey,
+        memory_pages: &[Pubkey],
+        instance_index: u8,
+        open_positions_account: Pubkey,
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::FundingExtraction { instance_index };
+        let data = instruction_data.try_to_vec().unwrap();
+        let mut accounts = Vec::with_capacity(7 + memory_pages.len());
+        accounts.push(AccountMeta::new(market_account, false));
+        accounts.push(AccountMeta::new(instance_account, false));
+        accounts.push(AccountMeta::new(open_positions_account, false));
+        accounts.push(AccountMeta::new_readonly(
+            Pubkey::from_str(FUNDING_EXTRACTION_LABEL).unwrap(),
+            false,
+        ));
+        accounts.push(AccountMeta::new_readonly(oracle_account, false));
+        for p in memory_pages {
+            accounts.push(AccountMeta::new(*p, false))
+        }
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+    #[allow(clippy::clippy::too_many_arguments)]
+    pub fn change_k(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        admin_account: Pubkey,
+        factor: u64,
+    ) -> Instruction {
+        let data = PerpInstruction::ChangeK { factor }.try_to_vec().unwrap();
+        let accounts = vec![
+            AccountMeta::new(market_account, false),
+            AccountMeta::new_readonly(admin_account, true),
+        ];
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+    #[allow(clippy::clippy::too_many_arguments)]
+    pub fn close_account(
+        audaces_protocol_program_id: Pubkey,
+        user_account: Pubkey,
+        user_account_owner: Pubkey,
+        lamports_target: Pubkey,
+    ) -> Instruction {
+        let data = PerpInstruction::CloseAccount.try_to_vec().unwrap();
+        let accounts = vec![
+            AccountMeta::new(user_account, false),
+            AccountMeta::new_readonly(user_account_owner, true),
+            AccountMeta::new(lamports_target, false),
+        ];
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+    #[allow(clippy::clippy::too_many_arguments)]
+    pub fn add_page(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        admin_account: Pubkey,
+        instance_account: Pubkey,
+        instance_index: u8,
+        new_memory_page: Pubkey,
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::AddPage { instance_index };
+        let data = instruction_data.try_to_vec().unwrap();
+        let accounts = vec![
+            AccountMeta::new_readonly(market_account, false),
+            AccountMeta::new_readonly(admin_account, true),
+            AccountMeta::new(instance_account, false),
+            AccountMeta::new_readonly(new_memory_page, false),
+        ];
+
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+    #[allow(clippy::clippy::too_many_arguments)]
+    pub fn rebalance(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        market_signer_account: Pubkey,
+        market_vault: Pubkey,
+        admin_account: Pubkey,
+        instance_account: Pubkey,
+        user_account: Pubkey,
+        user_account_owner: Pubkey,
+        bonfida_bnb: Pubkey,
+        memory_pages: &[Pubkey],
+        instance_index: u8,
+        collateral: u64,
+    ) -> Instruction {
+        let data = PerpInstruction::Rebalance {
+            collateral,
+            instance_index,
+        }
         .try_to_vec()
         .unwrap();
-    let accounts = vec![
-        AccountMeta::new_readonly(source_user_account_owner, true),
-        AccountMeta::new(source_user_account, false),
-        AccountMeta::new_readonly(destination_user_account_owner, true),
-        AccountMeta::new(destination_user_account, false),
-    ];
+        let mut accounts = vec![
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(clock::id(), false),
+            AccountMeta::new(market_account, false),
+            AccountMeta::new(instance_account, false),
+            AccountMeta::new_readonly(market_signer_account, false),
+            AccountMeta::new(market_vault, false),
+            AccountMeta::new(bonfida_bnb, false),
+            AccountMeta::new_readonly(user_account_owner, true),
+            AccountMeta::new(user_account, false),
+            AccountMeta::new_readonly(admin_account, true),
+        ];
 
-    Instruction {
-        program_id: ctx.audaces_protocol_program_id,
-        accounts,
-        data,
+        for p in memory_pages {
+            accounts.push(AccountMeta::new(*p, false))
+        }
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+    #[allow(clippy::clippy::too_many_arguments)]
+    pub fn transfer_user_account(
+        audaces_protocol_program_id: Pubkey,
+        user_account: Pubkey,
+        user_account_owner: Pubkey,
+        new_user_account_owner: Pubkey,
+    ) -> Instruction {
+        let data = PerpInstruction::TransferUserAccount {}
+            .try_to_vec()
+            .unwrap();
+        let accounts = vec![
+            AccountMeta::new_readonly(user_account_owner, true),
+            AccountMeta::new(user_account, false),
+            AccountMeta::new_readonly(new_user_account_owner, false),
+        ];
+
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+    #[allow(clippy::clippy::too_many_arguments)]
+    pub fn transfer_position(
+        audaces_protocol_program_id: Pubkey,
+        position_index: u16,
+        source_user_account: Pubkey,
+        source_user_account_owner: Pubkey,
+        destination_user_account: Pubkey,
+        destination_user_account_owner: Pubkey,
+    ) -> Instruction {
+        let data = PerpInstruction::TransferPosition { position_index }
+            .try_to_vec()
+            .unwrap();
+        let accounts = vec![
+            AccountMeta::new_readonly(source_user_account_owner, true),
+            AccountMeta::new(source_user_account, false),
+            AccountMeta::new_readonly(destination_user_account_owner, true),
+            AccountMeta::new(destination_user_account, false),
+        ];
+
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
     }
 }
