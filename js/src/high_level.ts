@@ -483,13 +483,11 @@ export const getOpenPositions = async (
     const pnl =
       pos.position.side === 1
         ? (pos.position.vCoinAmount * marketState.vQuoteAmount) /
-            (marketState.vCoinAmount + pos.position.vCoinAmount) +
-          pos.position.collateral -
+            (marketState.vCoinAmount + pos.position.vCoinAmount) -
           pos.position.vPcAmount
         : pos.position.vPcAmount -
           (pos.position.vCoinAmount * marketState.vQuoteAmount) /
-            (marketState.vCoinAmount - pos.position.vCoinAmount) +
-          pos.position.collateral;
+            (marketState.vCoinAmount - pos.position.vCoinAmount);
     const size = pos.position.vCoinAmount;
     const position = {
       side: pos.position.side === 1 ? "long" : "short",
