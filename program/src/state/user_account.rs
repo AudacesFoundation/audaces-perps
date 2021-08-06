@@ -160,7 +160,7 @@ pub fn remove_position(
 }
 
 pub fn get_position(
-    user_account_data: &mut [u8],
+    user_account_data: &[u8],
     user_account_header: &UserAccountState,
     position_index: u16,
 ) -> Result<OpenPosition, ProgramError> {
@@ -175,7 +175,7 @@ pub fn get_position(
     let offset_end = offset.checked_add(OpenPosition::LEN).unwrap();
 
     let slice = user_account_data
-        .get_mut(offset..offset_end)
+        .get(offset..offset_end)
         .ok_or(ProgramError::InvalidArgument)?;
     OpenPosition::unpack_unchecked(slice)
 }
