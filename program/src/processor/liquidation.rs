@@ -12,7 +12,7 @@ use solana_program::{
 use crate::{
     error::PerpError,
     positions_book::{memory::parse_memory, positions_book_tree::PositionsBook},
-    processor::LIQUIDATION_LABEL,
+    processor::{FEE_REBALANCING_FUND, LIQUIDATION_LABEL},
     state::{
         instance::{parse_instance, write_instance_and_memory},
         market::{get_instance_address, MarketState},
@@ -150,7 +150,9 @@ pub fn process_liquidation(
         refundable: 0,
         fixed: liquidated_collateral,
     };
-    market_state.apply_fees(&liq_payout, false, false)?;
+    market_state.rebalancing_funds +=
+        ((liq_payout.fixed as u128) * (FEE_REBALANCING_FUND as u128) / 100) as u64 + 1;
+
     market_state.transfer_fees(
         &mut liq_payout,
         accounts.spl_token_program,
