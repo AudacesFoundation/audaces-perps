@@ -505,9 +505,11 @@ pub fn print_node(pt: Pointer, mem: &Memory, offset: u8) {
 pub fn get_market_data(
     market_key: Pubkey,
     get_account_data: &dyn Fn(&Pubkey) -> Vec<u8>,
+    correct_total_user_bal: u64,
 ) -> Result<MarketDataPoint, ProgramError> {
     let market_account_data = get_account_data(&market_key);
-    let market_state = MarketState::unpack_from_slice(&market_account_data)?;
+    let mut market_state = MarketState::unpack_from_slice(&market_account_data)?;
+    market_state.total_user_balances = correct_total_user_bal;
 
     let market_vault_balance = spl_token::state::Account::unpack(&get_account_data(&Pubkey::new(
         &market_state.vault_address,
