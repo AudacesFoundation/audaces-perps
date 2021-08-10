@@ -1,8 +1,35 @@
+use dotenv::var;
+use reqwest::Client;
 use solana_client::client_error::ClientError;
 use solana_program::instruction::InstructionError;
 use solana_sdk::signature::Signature;
 use std::fmt::Debug;
 use tokio::task;
+
+pub struct SlackClient {
+    pub client: Client,
+    pub url: String,
+}
+
+impl SlackClient {
+    pub fn new() -> Self {
+        dotenv::dotenv().unwrap();
+        Self {
+            client: Client::new(),
+            url: var("SLACK_URL").unwrap(),
+        }
+    }
+    pub async fn send_message(&self, message: String) {
+        let slack_message = format!("{{ text: '{0}' }}", message);
+        &self
+            .client
+            .post(&self.url)
+            .body(slack_message)
+            .header("Content-Type", "application/json")
+            .send()
+            .await;
+    }
+}
 
 pub async fn retry<F, T, K, E, R>(arg: T, f: F, e: R) -> K
 where
@@ -12,10 +39,19 @@ where
 {
     loop {
         let res = e(f(&arg));
+        let mut counter = 1;
         if res.is_ok() {
             return res.unwrap();
         }
-        println!("Failed task with {:#?}, retrying", res.err().unwrap());
+        counter += 1;
+        let error = res.err().unwrap();
+        if counter % 10 == 0 {
+            SlackClient::new()
+                .send_message(format!("Failed task with {:#?}, retrying", error))
+                .await;
+        }
+
+        println!("Failed task with {:#?}, retrying", error);
         task::yield_now().await;
     }
 }

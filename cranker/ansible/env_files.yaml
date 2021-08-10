@@ -2,7 +2,7 @@
   hosts: all
   remote_user: ubuntu
   tasks:
-    - name: Copy wallet and .env
+    - name: Copy wallet and .env files
       become: yes
       become_user: ubuntu
       copy:
@@ -15,5 +15,9 @@
           }
         - {
             src: "../wallet.json",
+            dest: "{{ ansible_env.HOME }}/audaces-perps/cranker/",
+          }
+        - {
+            src: "../.env",
             dest: "{{ ansible_env.HOME }}/audaces-perps/cranker/",
           }
