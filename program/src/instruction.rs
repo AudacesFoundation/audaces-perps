@@ -251,6 +251,14 @@ pub enum PerpInstruction {
     TransferPosition {
         position_index: u16,
     },
+    CloseWithdraw {
+        position_index: u16,
+        closing_collateral: u64,
+        closing_v_coin: u64,
+        additional_withdraw_amount: u64,
+        predicted_entry_price: u64,   // 32 bit FP
+        maximum_slippage_margin: u64, // 32 bit FP
+    },
 }
 
 pub enum CloseOrOpen {
@@ -1254,6 +1262,72 @@ pub mod cpi {
             AccountMeta::new_readonly(destination_user_account_owner, true),
             AccountMeta::new(destination_user_account, false),
         ];
+
+        Instruction {
+            program_id: audaces_protocol_program_id,
+            accounts,
+            data,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn close_withdraw(
+        audaces_protocol_program_id: Pubkey,
+        market_account: Pubkey,
+        market_signer_account: Pubkey,
+        market_vault: Pubkey,
+        oracle_account: Pubkey,
+        instance_account: Pubkey,
+        user_account: Pubkey,
+        target_token_account: Pubkey,
+        user_account_owner: Pubkey,
+        bonfida_bnb: Pubkey,
+        memory_pages: &[Pubkey],
+        closing_collateral: u64,
+        closing_v_coin: u64,
+        additional_withdraw_amount: u64,
+        position_index: u16,
+        predicted_entry_price: u64,                 // 32 bit FP
+        maximum_slippage_margin: u64,               // 32 bit FP
+        discount_account: Option<&DiscountAccount>, // To specify if discount account is present
+        referrer_account_opt: Option<Pubkey>,
+    ) -> Instruction {
+        let instruction_data = PerpInstruction::CloseWithdraw {
+            closing_collateral,
+            closing_v_coin,
+            position_index,
+            predicted_entry_price,
+            maximum_slippage_margin,
+            additional_withdraw_amount,
+        };
+        let data = instruction_data.try_to_vec().unwrap();
+        let mut accounts = Vec::with_capacity(13 + memory_pages.len());
+        accounts.push(AccountMeta::new_readonly(spl_token::id(), false));
+        accounts.push(AccountMeta::new_readonly(clock::id(), false));
+        accounts.push(AccountMeta::new(market_account, false));
+        accounts.push(AccountMeta::new(instance_account, false));
+        accounts.push(AccountMeta::new_readonly(market_signer_account, false));
+        accounts.push(AccountMeta::new(market_vault, false));
+        accounts.push(AccountMeta::new(bonfida_bnb, false));
+        accounts.push(AccountMeta::new_readonly(oracle_account, false));
+        accounts.push(AccountMeta::new_readonly(user_account_owner, true));
+        accounts.push(AccountMeta::new(user_account, false));
+        accounts.push(AccountMeta::new_readonly(
+            Pubkey::from_str(TRADE_LABEL).unwrap(),
+            false,
+        ));
+        accounts.push(AccountMeta::new(target_token_account, false));
+
+        for p in memory_pages {
+            accounts.push(AccountMeta::new(*p, false))
+        }
+        if let Some(d) = discount_account {
+            accounts.push(AccountMeta::new_readonly(d.address, false));
+            accounts.push(AccountMeta::new_readonly(d.owner, true));
+        }
+        if let Some(referrer_account) = referrer_account_opt {
+            accounts.push(AccountMeta::new(referrer_account, false));
+        }
 
         Instruction {
             program_id: audaces_protocol_program_id,
