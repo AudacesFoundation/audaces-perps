@@ -10,8 +10,8 @@ use crate::{
         add_budget::process_add_budget, add_instance::process_add_instance,
         add_page::process_add_page, change_k::process_change_k,
         close_account::process_close_account, close_position::process_close_position,
-        create_market::process_create_market, funding::process_funding,
-        funding_extraction::process_funding_extraction,
+        close_withdraw::process_close_withdraw, create_market::process_create_market,
+        funding::process_funding, funding_extraction::process_funding_extraction,
         garbage_collection::process_garbage_collection,
         increase_position::process_increase_position, liquidation::process_liquidation,
         open_position::process_open_position, rebalance::process_rebalance,
@@ -81,6 +81,7 @@ pub mod add_page;
 pub mod change_k;
 pub mod close_account;
 pub mod close_position;
+pub mod close_withdraw;
 pub mod create_market;
 pub mod funding;
 pub mod funding_extraction;
@@ -248,6 +249,26 @@ impl Processor {
             PerpInstruction::TransferPosition { position_index } => {
                 msg!("Instruction: Transfer Position");
                 process_transfer_position(program_id, accounts, position_index)?;
+            }
+            PerpInstruction::CloseWithdraw {
+                position_index,
+                closing_collateral,
+                closing_v_coin,
+                additional_withdraw_amount,
+                predicted_entry_price,
+                maximum_slippage_margin,
+            } => {
+                msg!("Instruction: Close Position");
+                process_close_withdraw(
+                    program_id,
+                    accounts,
+                    position_index,
+                    closing_collateral,
+                    additional_withdraw_amount,
+                    closing_v_coin,
+                    predicted_entry_price,
+                    maximum_slippage_margin,
+                )?;
             }
         }
         Ok(())
