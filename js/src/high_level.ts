@@ -288,13 +288,13 @@ export const increasePositionBaseSize = async (
   const marketState = await getMarketState(connection, position.marketAddress);
   let sideSign = position.side === "long" ? 1 : -1;
   let targetSize = size + position.vCoinAmount;
-  const targetPositionQuoteSize =
-    (targetSize * marketState.vQuoteAmount) /
-    (marketState.vCoinAmount + sideSign * targetSize);
-  const targetLeverage = targetPositionQuoteSize / position.collateral;
   const currentQuoteSize =
     (position.vCoinAmount * marketState.vQuoteAmount) /
     (marketState.vCoinAmount + sideSign * position.vCoinAmount);
+  const targetPositionQuoteSize =
+    (targetSize * (marketState.vQuoteAmount - sideSign * currentQuoteSize)) /
+    (marketState.vCoinAmount - sideSign * (targetSize - position.vCoinAmount));
+  const targetLeverage = targetPositionQuoteSize / position.collateral;
   const amountToWithdraw =
     position.collateral - currentQuoteSize / targetLeverage;
   const discountAccount = await getDiscountAccount(connection, wallet);
