@@ -283,7 +283,9 @@ export const increasePositionBaseSize = async (
   position: Position,
   size: number,
   wallet: PublicKey,
-  referrerAccount: PublicKey | undefined = undefined
+  referrerAccount: PublicKey | undefined = undefined,
+  predictedEntryPrice: number | undefined = undefined,
+  maximumSlippageMargin: number | undefined = undefined
 ): Promise<PrimedTransaction> => {
   const marketState = await getMarketState(connection, position.marketAddress);
   let sideSign = position.side === "long" ? 1 : -1;
@@ -309,7 +311,9 @@ export const increasePositionBaseSize = async (
     discountAccount,
     wallet,
     referrerAccount,
-    BNB_ADDRESS
+    BNB_ADDRESS,
+    predictedEntryPrice,
+    maximumSlippageMargin
   );
   const [signersIncrease, instructionIncrease] = await increasePosition(
     connection,
@@ -322,7 +326,9 @@ export const increasePositionBaseSize = async (
     BNB_ADDRESS,
     discountAccount,
     wallet,
-    referrerAccount
+    referrerAccount,
+    predictedEntryPrice,
+    maximumSlippageMargin
   );
   return [
     [...signersClose, ...signersIncrease],
@@ -378,7 +384,9 @@ export const reducePositionBaseSize = async (
   position: Position,
   size: number,
   wallet: PublicKey,
-  referrerAccount: PublicKey | undefined = undefined
+  referrerAccount: PublicKey | undefined = undefined,
+  predictedEntryPrice: number | undefined = undefined,
+  maximumSlippageMargin: number | undefined = undefined
 ) => {
   const discountAccount = await getDiscountAccount(connection, wallet);
   const primedTx = await closePosition(
@@ -392,7 +400,9 @@ export const reducePositionBaseSize = async (
     discountAccount,
     wallet,
     referrerAccount,
-    BNB_ADDRESS
+    BNB_ADDRESS,
+    predictedEntryPrice,
+    maximumSlippageMargin
   );
   return primedTx;
 };
