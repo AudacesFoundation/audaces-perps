@@ -244,7 +244,7 @@ export class MarketState {
     this.openLongsVCoin = obj.openLongsVCoin.toNumber();
     this.openShortsVPc = obj.openShortsVPc.toNumber();
     this.openLongsVPc = obj.openShortsVCoin.toNumber();
-    this.totalUserBudgets = obj.totalUserBudgets.toNumber();
+    this.totalUserBudgets = obj.totalUserBudgets.fromTwos(64).toNumber();
     this.totalFeeBudget = obj.totalFeeBudget.toNumber();
     this.rebalancingFunds = obj.rebalancingFunds.toNumber();
     this.rebalancedVCoin = obj.rebalancedVCoin.fromTwos(64).toNumber();
