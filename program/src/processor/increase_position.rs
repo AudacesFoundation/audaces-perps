@@ -241,6 +241,12 @@ pub fn process_increase_position(
         market_state.quote_decimals,
     )?;
 
+    if open_position.side.get_sign() * ((new_liquidation_index as i64) - (oracle_price as i64)) >= 0
+    {
+        msg!("This position is preliquidated");
+        return Err(PerpError::MarginTooLow.into());
+    }
+
     let (balanced_v_pc_amount, balanced_v_coin_amount) =
         market_state.balance_operation(add_v_pc_amount_signed, add_v_coin_amount, oracle_price)?;
 
