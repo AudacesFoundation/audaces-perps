@@ -23,7 +23,7 @@ pub struct GlobalVars {
 
 static GLOBAL_VARS: GlobalVars = GlobalVars {
     prob_open_threshold: 0.8, // Probability
-    liquidation_prob: 0.8,    // Probability
+    liquidation_prob: 1.0,    // Probability
     oracle_price_var_mean: 3.0,
     oracle_price_var_stdv: 15.0,
     collateral_mean: 1_000_000_000.0,

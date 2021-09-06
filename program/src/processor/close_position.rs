@@ -107,7 +107,7 @@ pub fn process_close_position(
     let mut user_account_header =
         UserAccountState::unpack_from_slice(&accounts.user_account.data.borrow())?;
     let mut open_position = get_position(
-        &mut accounts.user_account.data.borrow_mut(),
+        &accounts.user_account.data.borrow_mut(),
         &user_account_header,
         position_index,
     )?;
@@ -216,10 +216,15 @@ pub fn process_close_position(
     .ok_or(PerpError::Overflow)?;
 
     if payout < 0 {
-        closing_collateral_ltd = core::cmp::min(
-            closing_collateral_ltd + ((-payout) as u64),
-            open_position.collateral,
-        ); // The insurance fund buffers the payout in the second case
+        // closing_collateral_ltd = core::cmp::min(
+        //     closing_collateral_ltd + ((-payout) as u64),
+        //     open_position.collateral,
+        // ); // The insurance fund buffers the payout in the second case
+        closing_collateral_ltd += (-payout) as u64;
+        if closing_collateral_ltd > open_position.collateral {
+            msg!("The current position has a negative payout. The market's spread from the oracle price has become too important");
+            return Err(PerpError::NegativePayout.into());
+        }
     }
 
     let (balanced_pc_closing_amount, balanced_closing_v_coin) =

@@ -105,7 +105,7 @@ pub fn process_funding_extraction(
 
     for position_index in 0..user_account_header.number_of_open_positions as u16 {
         let mut p = get_position(
-            &mut accounts.user_account.data.borrow_mut(),
+            &accounts.user_account.data.borrow_mut(),
             &user_account_header,
             position_index,
         )?;
@@ -170,14 +170,16 @@ pub fn process_funding_extraction(
     };
 
     let debt = -(((positions_v_coin.abs() as i128) * (funding_ratio as i128)) >> 32) as i64;
+    // if (funding_ratio.abs() > (1 << 32) / 100)
+    //     && (funding_ratio.signum() * positions_v_coin.signum() < 0)
+    // {
+    //     let supplemental_funding = funding_ratio / 100;
+    //     balanced_funding_ratio += supplemental_funding;
+    // }
     let balanced_debt =
         -(((positions_v_coin.abs() as i128) * (balanced_funding_ratio as i128)) >> 32) as i64;
 
-    let rebalancing_funds = balanced_debt - debt;
-    if rebalancing_funds.is_negative() {
-        msg!("Error calculating balanced funding operation");
-        panic!()
-    }
+    let rebalancing_funds = std::cmp::max(0, balanced_debt - debt);
 
     market_state.rebalancing_funds += rebalancing_funds as u64;
 
@@ -187,7 +189,7 @@ pub fn process_funding_extraction(
         let mut remaining_debt = balanced_debt - (user_account_header.balance as i64);
         for position_index in (0..user_account_header.number_of_open_positions).rev() {
             let p = get_position(
-                &mut accounts.user_account.data.borrow_mut(),
+                &accounts.user_account.data.borrow_mut(),
                 &user_account_header,
                 position_index as u16,
             )?;
