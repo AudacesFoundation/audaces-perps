@@ -124,7 +124,7 @@ pub fn process_increase_position(
     let mut book = PositionsBook::new(instance.shorts_pointer, instance.longs_pointer, memory);
 
     let mut open_position = get_position(
-        &mut accounts.user_account.data.borrow_mut(),
+        &accounts.user_account.data.borrow_mut(),
         &user_account_header,
         position_index,
     )?;

@@ -75,7 +75,7 @@ pub fn process_transfer_position(
     }
 
     let position = get_position(
-        &mut accounts.source_user_account.data.borrow_mut(),
+        &accounts.source_user_account.data.borrow_mut(),
         &source_user_account_header,
         position_index,
     )?;

@@ -144,17 +144,23 @@ pub fn process_liquidation(
     market_state.add_v_pc(balanced_v_pc)?;
     market_state.add_v_coin(balanced_v_coin)?;
 
+    let mut liq_payout =
+        (liquidated_shorts_v_pc as i64) - (liquidated_longs_v_pc as i64) - total_v_pc_difference
+            + (liquidated_collateral as i64);
+
+    liq_payout = std::cmp::max(0, liq_payout);
+
     // Transfer the Reward using the fees structure
-    let mut liq_payout = Fees {
-        total: liquidated_collateral as i64,
+    let mut liq_payout_wrapped = Fees {
+        total: liq_payout,
         refundable: 0,
-        fixed: liquidated_collateral,
+        fixed: liq_payout as u64,
     };
     market_state.rebalancing_funds +=
-        ((liq_payout.fixed as u128) * (FEE_REBALANCING_FUND as u128) / 100) as u64 + 1;
+        ((liq_payout_wrapped.fixed as u128) * (FEE_REBALANCING_FUND as u128) / 100) as u64 + 1;
 
     market_state.transfer_fees(
-        &mut liq_payout,
+        &mut liq_payout_wrapped,
         accounts.spl_token_program,
         accounts.market,
         accounts.market_vault,

@@ -8,7 +8,7 @@ import pandas as pd
 import plotly.express as px
 
 TRANSFORM = False
-PLOT_MEMORY = True
+PLOT_MEMORY = False
 NB_INSTRUCTIONS = 1000
 
 f_value_props = {
