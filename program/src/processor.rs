@@ -27,6 +27,7 @@ use crate::{
 pub(crate) const MARGIN_RATIO: u64 = ((1u128 << 64) / 20) as u64; // 64 fixed point
 const FUNDING_PERIOD: u64 = 3_600; // in s
 const FUNDING_NORMALIZATION: u64 = 86400 / FUNDING_PERIOD; // in s
+const MINIMAL_FUNDING: u64 = (1 << 32) * FUNDING_NORMALIZATION / 100; // FP32 the minimum fraction of funding in an imbalanced market
 const HISTORY_PERIOD: u64 = 300; // in s
 pub const REBALANCING_MARGIN: i64 = 429496729; // FP32 the relative difference in longs vs shorts open interests which enables rebalancing.
 pub const REBALANCING_LEVERAGE: u64 = 1;

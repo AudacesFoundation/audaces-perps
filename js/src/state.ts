@@ -3,6 +3,7 @@ import BN from "bn.js";
 import { Schema, deserializeUnchecked } from "borsh";
 import { AccountLayout } from "@solana/spl-token";
 import { PositionType } from "./instructions";
+import { throws } from "assert";
 
 export enum StateTag {
   Uninitialized,
@@ -328,6 +329,7 @@ export class MarketState {
         (this.openLongsVCoin / this.openShortsVCoin) * ratio,
         ratio
       );
+      fundingRatioShorts = Math.max(fundingRatioShorts, (ratio * 24) / 100);
       return { fundingRatioLongs, fundingRatioShorts };
     } else {
       let fundingRatioShorts = ratio;
@@ -335,6 +337,8 @@ export class MarketState {
         (this.openShortsVCoin / this.openLongsVCoin) * -ratio,
         -ratio
       );
+
+      fundingRatioLongs = Math.max(fundingRatioLongs, (ratio * 24) / 100);
       return { fundingRatioLongs, fundingRatioShorts };
     }
   }
