@@ -21,7 +21,7 @@ use crate::{
     utils::{check_account_key, check_account_owner, compute_payout, get_oracle_price},
 };
 
-use super::FUNDING_EXTRACTION_LABEL;
+use super::{FUNDING_EXTRACTION_LABEL, MINIMAL_FUNDING};
 
 pub struct Accounts<'a, 'b: 'a> {
     market: &'a AccountInfo<'b>,
@@ -161,7 +161,10 @@ pub fn process_funding_extraction(
             let mut delta = (positions_v_coin.signum() * market_state.funding_history[i]) as i128;
             f = (f * ((1 << 32) - delta)) >> 32;
             if delta.is_negative() {
-                delta = (delta * (market_state.funding_balancing_factors[i] as i128)) >> 32;
+                delta = (delta
+                    * (std::cmp::max(market_state.funding_balancing_factors[i], MINIMAL_FUNDING)
+                        as i128))
+                    >> 32;
             }
             balanced_f = (balanced_f * ((1 << 32) - delta)) >> 32;
             i = (i + 1) % cycle
@@ -170,12 +173,6 @@ pub fn process_funding_extraction(
     };
 
     let debt = -(((positions_v_coin.abs() as i128) * (funding_ratio as i128)) >> 32) as i64;
-    // if (funding_ratio.abs() > (1 << 32) / 100)
-    //     && (funding_ratio.signum() * positions_v_coin.signum() < 0)
-    // {
-    //     let supplemental_funding = funding_ratio / 100;
-    //     balanced_funding_ratio += supplemental_funding;
-    // }
     let balanced_debt =
         -(((positions_v_coin.abs() as i128) * (balanced_funding_ratio as i128)) >> 32) as i64;
 
