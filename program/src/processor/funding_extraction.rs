@@ -152,7 +152,7 @@ pub fn process_funding_extraction(
         return Err(PerpError::Nop.into());
     }
 
-    let (funding_ratio, balanced_funding_ratio) = {
+    let (_funding_ratio, balanced_funding_ratio) = {
         let mut f = 1i128 << 32;
         let mut balanced_f = f;
         let cycle = market_state.funding_history.len();
@@ -172,13 +172,13 @@ pub fn process_funding_extraction(
         ((f - (1 << 32)) as i64, (balanced_f - (1 << 32)) as i64)
     };
 
-    let debt = -(((positions_v_coin.abs() as i128) * (funding_ratio as i128)) >> 32) as i64;
+    // let debt = -(((positions_v_coin.abs() as i128) * (funding_ratio as i128)) >> 32) as i64;
     let balanced_debt =
         -(((positions_v_coin.abs() as i128) * (balanced_funding_ratio as i128)) >> 32) as i64;
 
-    let rebalancing_funds = std::cmp::max(0, balanced_debt - debt);
+    // let rebalancing_funds = std::cmp::max(0, balanced_debt - debt);
 
-    market_state.rebalancing_funds += rebalancing_funds as u64;
+    // market_state.rebalancing_funds += rebalancing_funds as u64;
 
     if balanced_debt > (user_account_header.balance as i64) {
         msg!("This account has insufficient funds and must be liquidated");
