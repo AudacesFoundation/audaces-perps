@@ -3,7 +3,6 @@ import BN from "bn.js";
 import { Schema, deserializeUnchecked } from "borsh";
 import { AccountLayout } from "@solana/spl-token";
 import { PositionType } from "./instructions";
-import { throws } from "assert";
 
 export enum StateTag {
   Uninitialized,
@@ -45,7 +44,7 @@ class Pages {
   }
 }
 export class Instance {
-  shortsPointer?: number;
+  shortsPointer?: numbe;
   longsPointer?: number;
   garbagePointer?: number;
   pages: PageInfo[];
