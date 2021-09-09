@@ -97,7 +97,11 @@ pub fn process_funding(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
 
         let funding_history_offset = market_state.funding_history_offset as usize;
 
-        market_state.funding_history[funding_history_offset] = funding_ratio;
+        let mark_price = (((market_state.v_pc_amount as u128) << 32)
+            / (market_state.v_coin_amount as u128)) as u64;
+
+        market_state.funding_history[funding_history_offset] =
+            (((funding_ratio as i128) * (mark_price as i128)) >> 32) as i64;
         market_state.funding_balancing_factors[funding_history_offset] = funding_balancing_factor;
         market_state.funding_history_offset =
             (market_state.funding_history_offset + 1) % (market_state.funding_history.len() as u8);
