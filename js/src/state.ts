@@ -44,7 +44,7 @@ class Pages {
   }
 }
 export class Instance {
-  shortsPointer?: numbe;
+  shortsPointer?: number;
   longsPointer?: number;
   garbagePointer?: number;
   pages: PageInfo[];
