@@ -323,21 +323,21 @@ export class MarketState {
   getFundingRatioLongShort() {
     let ratio = this.fundingSamplesSum / (this.fundingSamplesCount * 2 ** 32);
     if (ratio > 0) {
-      let fundingRatioLongs = -ratio;
-      let fundingRatioShorts = Math.min(
-        (this.openLongsVCoin / this.openShortsVCoin) * ratio,
-        ratio
+      let fundingRatioLongs = ratio;
+      let balancing_factor = Math.max(
+        this.openLongsVCoin / this.openShortsVCoin,
+        24 / 100
       );
-      fundingRatioShorts = Math.max(fundingRatioShorts, (ratio * 24) / 100);
+      let fundingRatioShorts = balancing_factor * ratio;
       return { fundingRatioLongs, fundingRatioShorts };
     } else {
       let fundingRatioShorts = ratio;
-      let fundingRatioLongs = Math.min(
-        (this.openShortsVCoin / this.openLongsVCoin) * -ratio,
-        -ratio
-      );
 
-      fundingRatioLongs = Math.max(fundingRatioLongs, (ratio * 24) / 100);
+      let balancing_factor = Math.max(
+        this.openShortsVCoin / this.openLongsVCoin,
+        24 / 100
+      );
+      let fundingRatioLongs = balancing_factor * ratio;
       return { fundingRatioLongs, fundingRatioShorts };
     }
   }
