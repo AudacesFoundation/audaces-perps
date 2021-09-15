@@ -105,7 +105,9 @@ pub fn process_funding(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         market_state.funding_balancing_factors[funding_history_offset] = funding_balancing_factor;
         market_state.funding_history_offset =
             (market_state.funding_history_offset + 1) % (market_state.funding_history.len() as u8);
-        market_state.last_funding_timestamp += FUNDING_PERIOD;
+        let elapsed_funding_cycles =
+            (current_timestamp - market_state.last_funding_timestamp) / FUNDING_PERIOD;
+        market_state.last_funding_timestamp += elapsed_funding_cycles * FUNDING_PERIOD;
         market_state.funding_samples_sum = 0;
         market_state.funding_samples_count = 0;
         nop = false;
