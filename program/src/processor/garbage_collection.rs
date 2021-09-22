@@ -83,6 +83,20 @@ pub fn process_garbage_collection(
     let memory = parse_memory(&instance, &page_infos, &mut accounts.remaining)?;
     let mut book = PositionsBook::new(instance.shorts_pointer, instance.longs_pointer, memory);
 
+    let (open_longs_v_coin, open_shorts_v_coin) = book.get_v_coin()?;
+    let (open_longs_v_pc, open_shorts_v_pc) = book.get_v_pc()?;
+
+    if market_state.open_longs_v_coin != open_longs_v_coin {
+        // Self healing market state
+        market_state.open_longs_v_coin = open_longs_v_coin;
+        market_state.open_shorts_v_coin = open_shorts_v_coin;
+        market_state.open_shorts_v_pc = open_shorts_v_pc;
+        market_state.open_longs_v_pc = open_longs_v_pc;
+
+        market_state.pack_into_slice(&mut accounts.market.data.borrow_mut());
+        return Ok(());
+    }
+
     let freed_slots = book.memory.crank_garbage_collector(max_iterations)?;
 
     if freed_slots == 0 {

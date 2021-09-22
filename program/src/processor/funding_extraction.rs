@@ -152,33 +152,27 @@ pub fn process_funding_extraction(
         return Err(PerpError::Nop.into());
     }
 
-    let (_funding_ratio, balanced_funding_ratio) = {
-        let mut f = 1i128 << 32;
-        let mut balanced_f = f;
-        let cycle = market_state.funding_history.len();
-        let mut i = last_funding_offset.unwrap();
-        while i != funding_history_offset {
-            let mut delta = (positions_v_coin.signum() * market_state.funding_history[i]) as i128;
-            f = (f * ((1 << 32) - delta)) >> 32;
-            if delta.is_negative() {
-                delta = (delta
-                    * (std::cmp::max(market_state.funding_balancing_factors[i], MINIMAL_FUNDING)
-                        as i128))
-                    >> 32;
-            }
-            balanced_f = (balanced_f * ((1 << 32) - delta)) >> 32;
-            i = (i + 1) % cycle
+    let mut balanced_funding_ratio = 0;
+    let mut i = last_funding_offset.unwrap();
+    let cycle = market_state.funding_history.len();
+    while i != funding_history_offset {
+        // Iterate to account for missed extractions
+        // Market Price is included in funding_history
+        let mut delta = (positions_v_coin.signum() * market_state.funding_history[i]) as i128;
+        if delta.is_negative() {
+            // In the case where the funding is positive for the user, inflate it for arbitrage incentive.
+            delta = (delta
+                * (std::cmp::max(market_state.funding_balancing_factors[i], MINIMAL_FUNDING)
+                    as i128))
+                >> 32;
         }
-        ((f - (1 << 32)) as i64, (balanced_f - (1 << 32)) as i64)
-    };
+        // Add all missed funding ratios together
+        balanced_funding_ratio += delta;
+        i = (i + 1) % cycle;
+    }
 
-    // let debt = -(((positions_v_coin.abs() as i128) * (funding_ratio as i128)) >> 32) as i64;
     let balanced_debt =
-        -(((positions_v_coin.abs() as i128) * (balanced_funding_ratio as i128)) >> 32) as i64;
-
-    // let rebalancing_funds = std::cmp::max(0, balanced_debt - debt);
-
-    // market_state.rebalancing_funds += rebalancing_funds as u64;
+        -(((positions_v_coin.abs() as i128) * (balanced_funding_ratio)) >> 32) as i64;
 
     if balanced_debt > (user_account_header.balance as i64) {
         msg!("This account has insufficient funds and must be liquidated");
@@ -222,6 +216,7 @@ pub fn process_funding_extraction(
                     .total_collateral
                     .checked_sub(p.collateral)
                     .unwrap();
+                market_state.sub_open_interest(p.v_coin_amount, p.v_pc_amount, p.side)?;
                 remove_position(
                     &mut accounts.user_account.data.borrow_mut(),
                     &mut user_account_header,
