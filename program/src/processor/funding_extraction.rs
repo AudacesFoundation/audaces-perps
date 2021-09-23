@@ -172,7 +172,7 @@ pub fn process_funding_extraction(
     }
 
     let balanced_debt =
-        -(((positions_v_coin.abs() as i128) * (balanced_funding_ratio)) >> 32) as i64;
+        (((positions_v_coin.abs() as i128) * (balanced_funding_ratio)) >> 32) as i64;
 
     if balanced_debt > (user_account_header.balance as i64) {
         msg!("This account has insufficient funds and must be liquidated");
