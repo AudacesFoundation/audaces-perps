@@ -2,11 +2,13 @@ use std::{cmp, slice::Iter, str::FromStr};
 
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    clock::Clock,
     entrypoint::ProgramResult,
     msg,
     program_error::ProgramError,
     program_pack::Pack,
     pubkey::Pubkey,
+    sysvar::Sysvar,
 };
 
 use crate::{
@@ -18,7 +20,10 @@ use crate::{
         user_account::{get_position, remove_position, write_position},
     },
     state::{user_account::UserAccountState, PositionType},
-    utils::{check_account_key, check_account_owner, compute_payout, get_oracle_price},
+    utils::{
+        check_account_key, check_account_owner, compute_liquidation_index, compute_payout,
+        get_oracle_price,
+    },
 };
 
 use super::{FUNDING_EXTRACTION_LABEL, MINIMAL_FUNDING};
@@ -179,13 +184,13 @@ pub fn process_funding_extraction(
         // Liquidate all positions.
         let mut remaining_debt = balanced_debt - (user_account_header.balance as i64);
         for position_index in (0..user_account_header.number_of_open_positions).rev() {
-            let p = get_position(
+            let mut p = get_position(
                 &accounts.user_account.data.borrow_mut(),
                 &user_account_header,
                 position_index as u16,
             )?;
             if p.instance_index == instance_index {
-                let _ = book.close_position(
+                let res = book.close_position(
                     p.liquidation_index,
                     p.collateral,
                     p.v_coin_amount,
@@ -195,33 +200,70 @@ pub fn process_funding_extraction(
                 );
                 let v_coin_amount = (p.v_coin_amount as i64) * p.side.get_sign();
                 let v_pc_amount = market_state.compute_add_v_pc(v_coin_amount)?;
-                remaining_debt -= compute_payout(
+                let position_payout = compute_payout(
                     v_pc_amount.abs() as u64,
                     p.v_pc_amount,
                     p.collateral,
                     &p.side,
                 );
-
                 let oracle_price = get_oracle_price(
                     &accounts.oracle.data.borrow(),
                     market_state.coin_decimals,
                     market_state.quote_decimals,
                 )?;
+                if p.collateral > remaining_debt as u64 && res.is_ok() {
+                    p.collateral -= remaining_debt as u64;
+                    p.liquidation_index = compute_liquidation_index(
+                        p.collateral,
+                        p.v_coin_amount,
+                        p.v_pc_amount,
+                        p.side,
+                        market_state.get_k(),
+                    );
+                    let is_liquidated = match p.side {
+                        PositionType::Short => p.liquidation_index > oracle_price,
+                        PositionType::Long => p.liquidation_index < oracle_price,
+                    };
+                    if !is_liquidated {
+                        book.open_position(
+                            p.liquidation_index,
+                            p.collateral,
+                            p.v_coin_amount,
+                            p.v_pc_amount,
+                            p.side,
+                            Clock::get()?.slot,
+                        )?;
+                        market_state.total_collateral = market_state
+                            .total_collateral
+                            .checked_sub(remaining_debt as u64)
+                            .unwrap();
+                        break;
+                    }
+                }
+                if res.is_ok() {
+                    remaining_debt -= position_payout;
+                    let (balanced_v_pc, balanced_v_coin) =
+                        market_state.balance_operation(v_pc_amount, v_coin_amount, oracle_price)?;
+                    market_state.add_v_pc(balanced_v_pc)?;
+                    market_state.add_v_coin(balanced_v_coin)?;
+                    market_state.total_collateral = market_state
+                        .total_collateral
+                        .checked_sub(p.collateral)
+                        .unwrap();
+                    market_state.sub_open_interest(p.v_coin_amount, p.v_pc_amount, p.side)?;
+                    remove_position(
+                        &mut accounts.user_account.data.borrow_mut(),
+                        &mut user_account_header,
+                        position_index,
+                    )?;
+                } else {
+                    remove_position(
+                        &mut accounts.user_account.data.borrow_mut(),
+                        &mut user_account_header,
+                        position_index,
+                    )?;
+                }
 
-                let (balanced_v_pc, balanced_v_coin) =
-                    market_state.balance_operation(v_pc_amount, v_coin_amount, oracle_price)?;
-                market_state.add_v_pc(balanced_v_pc)?;
-                market_state.add_v_coin(balanced_v_coin)?;
-                market_state.total_collateral = market_state
-                    .total_collateral
-                    .checked_sub(p.collateral)
-                    .unwrap();
-                market_state.sub_open_interest(p.v_coin_amount, p.v_pc_amount, p.side)?;
-                remove_position(
-                    &mut accounts.user_account.data.borrow_mut(),
-                    &mut user_account_header,
-                    position_index,
-                )?;
                 if remaining_debt <= 0 {
                     break;
                 }
