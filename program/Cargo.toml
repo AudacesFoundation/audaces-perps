@@ -17,6 +17,7 @@ flux-aggregator = {git = "https://github.com/blockworks-foundation/solana-flux-a
 borsh = "0.9.1"
 num-derive = "0.3.3"
 thiserror = "1.0.24"
+bonfida-utils = {git = "https://github.com/Bonfida/bonfida-utils.git"}
 spl-token = {version = "3.1.0", features = ["no-entrypoint"]}
 spl-associated-token-account = {version = "1.0.2", features = ["no-entrypoint"]}
 pyth-client = {git = "https://github.com/Bonfida/pyth-client-rs", branch = "v2"}
