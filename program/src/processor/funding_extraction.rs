@@ -251,18 +251,12 @@ pub fn process_funding_extraction(
                         .checked_sub(p.collateral)
                         .unwrap();
                     market_state.sub_open_interest(p.v_coin_amount, p.v_pc_amount, p.side)?;
-                    remove_position(
-                        &mut accounts.user_account.data.borrow_mut(),
-                        &mut user_account_header,
-                        position_index,
-                    )?;
-                } else {
-                    remove_position(
-                        &mut accounts.user_account.data.borrow_mut(),
-                        &mut user_account_header,
-                        position_index,
-                    )?;
                 }
+                remove_position(
+                    &mut accounts.user_account.data.borrow_mut(),
+                    &mut user_account_header,
+                    position_index,
+                )?;
 
                 if remaining_debt <= 0 {
                     break;
