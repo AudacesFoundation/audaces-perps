@@ -15,6 +15,7 @@ use crate::{
         Fees, PositionType,
     },
 };
+use bonfida_utils::pyth::get_oracle_price_fp32;
 use num_traits::FromPrimitive;
 use pyth_client::{cast, Price, Product, PROD_HDR_SIZE};
 use solana_program::{
@@ -252,15 +253,9 @@ pub fn get_oracle_price(
         }
     };
     // Pyth Oracle
-    let price_account = cast::<Price>(account_data);
-    let price = ((price_account.agg.price as u128) << 32)
-        / 10u128.pow(price_account.expo.abs().try_into().unwrap());
+    let price = get_oracle_price_fp32(account_data, coin_decimals, quote_decimals)?;
 
-    let corrected_price =
-        (price * 10u128.pow(quote_decimals as u32)) / 10u128.pow(coin_decimals as u32);
-    msg!("Oracle value: {:?}", corrected_price >> 32);
-
-    Ok(corrected_price as u64)
+    Ok(price)
 }
 
 pub fn get_pyth_market_symbol(pyth_product: &Product) -> Result<String, ProgramError> {
