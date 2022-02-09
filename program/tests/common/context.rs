@@ -139,11 +139,17 @@ impl Context {
             .await
             .unwrap();
 
+        let space = 1_000_000;
         let create_market_account_instruction = create_account(
             &prg_test_ctx.payer.pubkey(),
             &market_account.pubkey(),
-            1_000_000,
-            1_000_000,
+            prg_test_ctx
+                .banks_client
+                .get_rent()
+                .await
+                .unwrap()
+                .minimum_balance(space),
+            space as u64,
             &audaces_protocol_program_id,
         );
         sign_send_instructions(
@@ -157,8 +163,13 @@ impl Context {
         let open_position_account_instruction = create_account(
             &prg_test_ctx.payer.pubkey(),
             &user_open_position_account.pubkey(),
-            1_000_000,
-            1_000_000,
+            prg_test_ctx
+                .banks_client
+                .get_rent()
+                .await
+                .unwrap()
+                .minimum_balance(space),
+            space as u64,
             &audaces_protocol_program_id,
         );
         sign_send_instructions(

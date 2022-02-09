@@ -41,11 +41,17 @@ impl Context {
         space_per_page: u64,
     ) -> Result<(), TransportError> {
         let instance_keypair = Keypair::new();
+        let space = 1_000_000;
         let mut instructions = vec![create_account(
             &self.prg_test_ctx.payer.pubkey(),
             &instance_keypair.pubkey(),
-            1_000_000,
-            1_000_000,
+            self.prg_test_ctx
+                .banks_client
+                .get_rent()
+                .await
+                .unwrap()
+                .minimum_balance(space),
+            space as u64,
             &self.market_ctx.audaces_protocol_program_id,
         )];
         let mut signers = vec![];
@@ -57,7 +63,12 @@ impl Context {
             instructions.push(create_account(
                 &self.prg_test_ctx.payer.pubkey(),
                 &page_keypair.pubkey(),
-                1_000_000,
+                self.prg_test_ctx
+                    .banks_client
+                    .get_rent()
+                    .await
+                    .unwrap()
+                    .minimum_balance(space_per_page as usize),
                 space_per_page,
                 &self.market_ctx.audaces_protocol_program_id,
             ));
@@ -298,7 +309,12 @@ impl Context {
             create_account(
                 &self.prg_test_ctx.payer.pubkey(),
                 &page_keypair.pubkey(),
-                1_000_000,
+                self.prg_test_ctx
+                    .banks_client
+                    .get_rent()
+                    .await
+                    .unwrap()
+                    .minimum_balance(space as usize),
                 space,
                 &self.market_ctx.audaces_protocol_program_id,
             ),
@@ -357,11 +373,17 @@ impl Context {
     ) -> Result<(), TransportError> {
         let new_user_account = Keypair::new();
 
+        let space = 1_000_000;
         let create_instruction = vec![create_account(
             &self.prg_test_ctx.payer.pubkey(),
             &new_user_account.pubkey(),
-            1_000_000,
-            1_000_000,
+            self.prg_test_ctx
+                .banks_client
+                .get_rent()
+                .await
+                .unwrap()
+                .minimum_balance(space),
+            space as u64,
             &self.market_ctx.audaces_protocol_program_id,
         )];
         let signers = vec![&new_user_account];
