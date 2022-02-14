@@ -221,8 +221,8 @@ pub fn process_funding_extraction(
                         market_state.get_k(),
                     );
                     let is_liquidated = match p.side {
-                        PositionType::Short => p.liquidation_index > oracle_price,
-                        PositionType::Long => p.liquidation_index < oracle_price,
+                        PositionType::Short => p.liquidation_index < oracle_price,
+                        PositionType::Long => p.liquidation_index > oracle_price,
                     };
                     if !is_liquidated {
                         book.open_position(
