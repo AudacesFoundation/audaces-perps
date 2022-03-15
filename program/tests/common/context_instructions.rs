@@ -10,6 +10,7 @@ use audaces_protocol::{
     state::PositionType,
 };
 use solana_program::{pubkey::Pubkey, system_instruction::create_account};
+use solana_program_test::BanksClientError;
 use solana_sdk::{signature::Keypair, signer::Signer, transport::TransportError};
 
 impl Context {
@@ -19,7 +20,7 @@ impl Context {
         initial_v_pc_amount: u64,
         coin_decimals: u8,
         quote_decimals: u8,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let create_market_instruction = create_market(
             &self.market_ctx,
             market_symbol,
@@ -39,7 +40,7 @@ impl Context {
         &mut self,
         nb_pages_per_instance: u8,
         space_per_page: u64,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let instance_keypair = Keypair::new();
         let space = 1_000_000;
         let mut instructions = vec![create_account(
@@ -98,7 +99,7 @@ impl Context {
         &mut self,
         amount: u64,
         user_account_index: usize,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let add_budget_instruction = add_budget(
             &self.market_ctx,
             amount,
@@ -118,7 +119,7 @@ impl Context {
         &mut self,
         amount: u64,
         user_account_index: usize,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let withdraw_budget_instruction = withdraw_budget(
             &self.market_ctx,
             amount,
@@ -141,7 +142,7 @@ impl Context {
         leverage: u64,
         instance_index: u8,
         user_account_index: usize,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let open_position_instruction = open_position(
             &self.market_ctx,
             &PositionInfo {
@@ -172,7 +173,7 @@ impl Context {
         position_index: u16,
         instance_index: u8,
         user_account_index: usize,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let increase_position_instruction = increase_position(
             &self.market_ctx,
             collateral,
@@ -200,7 +201,7 @@ impl Context {
         closing_v_coin: u64,
         position_index: u16,
         user_account_index: usize,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let position = self
             .get_position(position_index, user_account_index)
             .await
@@ -229,7 +230,7 @@ impl Context {
         .await
     }
 
-    pub async fn liquidate(&mut self, instance_index: u8) -> Result<(), TransportError> {
+    pub async fn liquidate(&mut self, instance_index: u8) -> Result<(), BanksClientError> {
         let liquidate_instruction =
             crank_liquidation(&self.market_ctx, instance_index, self.user_ctx.usdc_account);
         sign_send_instructions(&mut self.prg_test_ctx, vec![liquidate_instruction], vec![]).await
@@ -239,7 +240,7 @@ impl Context {
         &mut self,
         instance_index: u8,
         max_iterations: u64,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let collect_garbage_instruction = collect_garbage(
             &self.market_ctx,
             instance_index,
@@ -254,7 +255,7 @@ impl Context {
         .await
     }
 
-    pub async fn crank_funding(&mut self) -> Result<(), TransportError> {
+    pub async fn crank_funding(&mut self) -> Result<(), BanksClientError> {
         let crank_funding_instruction = crank_funding(&self.market_ctx);
         sign_send_instructions(
             &mut self.prg_test_ctx,
@@ -268,7 +269,7 @@ impl Context {
         &mut self,
         instance_index: u8,
         user_account_index: usize,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let crank_funding_instruction = extract_funding(
             &self.market_ctx,
             instance_index,
@@ -286,7 +287,7 @@ impl Context {
         &mut self,
         lamports_target: Pubkey,
         user_account_index: usize,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let close_account_instruction = close_account(
             &self.market_ctx,
             self.user_ctx.user_accounts[user_account_index],
@@ -302,7 +303,11 @@ impl Context {
         .await
     }
 
-    pub async fn add_page(&mut self, instance_index: u8, space: u64) -> Result<(), TransportError> {
+    pub async fn add_page(
+        &mut self,
+        instance_index: u8,
+        space: u64,
+    ) -> Result<(), BanksClientError> {
         let page_keypair = Keypair::new();
 
         let instructions = vec![
@@ -334,7 +339,7 @@ impl Context {
         instance_index: u8,
         collateral: u64,
         user_account_index: usize,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let instructions = vec![rebalance(
             &self.market_ctx,
             self.user_ctx.user_accounts[user_account_index],
@@ -353,7 +358,7 @@ impl Context {
         &mut self,
         new_user_account_owner: Keypair,
         user_account_index: usize,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let instructions = vec![transfer_user_account(
             &self.market_ctx,
             self.user_ctx.user_accounts[user_account_index],
@@ -370,7 +375,7 @@ impl Context {
         &mut self,
         position_index: u16,
         user_account_index: usize,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let new_user_account = Keypair::new();
 
         let space = 1_000_000;
@@ -414,7 +419,7 @@ impl Context {
     pub async fn create_user_accounts(
         &mut self,
         nb_new_accounts: usize,
-    ) -> Result<(), TransportError> {
+    ) -> Result<(), BanksClientError> {
         let mut instructions = vec![];
         let mut signers: Vec<Keypair> = vec![];
         for _ in 0..nb_new_accounts {

@@ -2,6 +2,8 @@
 
 pub mod common;
 
+use solana_program_test::BanksClientError;
+
 use crate::common::{context::Context, utils::catch_noop};
 
 #[derive(Debug)]
@@ -161,7 +163,7 @@ fn simulation() {
         // Execute
         match result {
             Ok(_) => {}
-            Err(TransportError::TransactionError(te)) => match te {
+            Err(BanksClientError::TransactionError(te)) => match te {
                 TransactionError::InstructionError(_, ie) => match ie {
                     InstructionError::InvalidArgument
                     | InstructionError::Custom(2)

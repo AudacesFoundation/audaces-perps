@@ -11,25 +11,25 @@ test-bpf = []
 mock-oracle = []
 
 [dependencies]
-solana-program = "1.6.7"
+solana-program = "1.10.2"
 num-traits = "0.2"
 flux-aggregator = {git = "https://github.com/blockworks-foundation/solana-flux-aggregator.git", features = ["no-entrypoint"]}
 borsh = "0.9.1"
 num-derive = "0.3.3"
 thiserror = "1.0.24"
 bonfida-utils = {git = "https://github.com/Bonfida/bonfida-utils.git"}
-spl-token = {version = "3.1.0", features = ["no-entrypoint"]}
-spl-associated-token-account = {version = "1.0.2", features = ["no-entrypoint"]}
+spl-token = {version = "3", features = ["no-entrypoint"]}
+spl-associated-token-account = {version = "1.0.3", features = ["no-entrypoint"]}
 pyth-client = {git = "https://github.com/Bonfida/pyth-client-rs", branch = "v2"}
 log = {version= "0.4.14"}
 spl-math = {version = "0.1.0", features = ["no-entrypoint"]}
 
 [dev-dependencies]
-solana-sdk = "1.6.7"
+solana-sdk = "1.10.2"
 mock_oracle = { path = "../utils/mock_oracle", features = ["no-entrypoint"]}
-solana-client = "1.6.7"
+solana-client = "1.10.2"
 rand = "0.8.3"
-solana-program-test = "1.6.7"
+solana-program-test = "1.10.2"
 tokio = {version="1.6", features = ["macros"]}
 futures = "0.3.15"
 futures-util = "0.3.15"
