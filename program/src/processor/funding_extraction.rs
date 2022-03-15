@@ -225,18 +225,26 @@ pub fn process_funding_extraction(
                         PositionType::Long => p.liquidation_index > oracle_price,
                     };
                     if !is_liquidated {
+                        p.slot_number = Clock::get()?.slot;
                         book.open_position(
                             p.liquidation_index,
                             p.collateral,
                             p.v_coin_amount,
                             p.v_pc_amount,
                             p.side,
-                            Clock::get()?.slot,
+                            p.slot_number,
                         )?;
                         market_state.total_collateral = market_state
                             .total_collateral
                             .checked_sub(remaining_debt as u64)
                             .unwrap();
+                        write_position(
+                            &mut accounts.user_account.data.borrow_mut(),
+                            position_index as u16,
+                            &mut user_account_header,
+                            &p,
+                            true,
+                        )?;
                         break;
                     }
                 }
