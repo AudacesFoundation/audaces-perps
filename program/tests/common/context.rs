@@ -25,7 +25,7 @@ use solana_program::{
     entrypoint::ProgramResult, program_error::ProgramError, program_pack::Pack, pubkey::Pubkey,
     system_instruction::create_account,
 };
-use solana_program_test::{processor, ProgramTest, ProgramTestContext};
+use solana_program_test::{processor, BanksClientError, ProgramTest, ProgramTestContext};
 use solana_sdk::signature::Keypair;
 use solana_sdk::{signature::Signer, transport::TransportError};
 use spl_token::{
@@ -274,7 +274,7 @@ impl Context {
         };
     }
 
-    pub async fn change_oracle_price(&mut self, new_price: u64) -> Result<(), TransportError> {
+    pub async fn change_oracle_price(&mut self, new_price: u64) -> Result<(), BanksClientError> {
         let change_price_instruction = change_price(
             self.test_ctx.mock_oracle_program_id,
             new_price,
@@ -508,11 +508,11 @@ impl Context {
         Ok((instance, pages))
     }
 
-    pub async fn update_blockhash(&mut self) -> ProgramResult {
+    pub async fn update_blockhash(&mut self) -> Result<(), BanksClientError> {
         self.prg_test_ctx.last_blockhash = self
             .prg_test_ctx
             .banks_client
-            .get_recent_blockhash()
+            .get_latest_blockhash()
             .await?;
         Ok(())
     }

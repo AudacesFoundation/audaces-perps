@@ -4,7 +4,7 @@ use solana_program::{
     rent::Rent,
     system_instruction,
 };
-use solana_program_test::ProgramTestContext;
+use solana_program_test::{BanksClientError, ProgramTestContext};
 use solana_sdk::{signature::Keypair, transaction::Transaction, transport::TransportError};
 use solana_sdk::{signature::Signer, transaction::TransactionError};
 use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
@@ -15,7 +15,7 @@ pub async fn sign_send_instructions(
     ctx: &mut ProgramTestContext,
     instructions: Vec<Instruction>,
     signers: Vec<&Keypair>,
-) -> Result<(), TransportError> {
+) -> Result<(), BanksClientError> {
     let mut transaction = Transaction::new_with_payer(&instructions, Some(&ctx.payer.pubkey()));
     let mut payer_signers = vec![&ctx.payer];
     for s in signers {
@@ -65,9 +65,9 @@ pub fn mint_init_transaction(
 }
 
 #[allow(clippy::collapsible_match)]
-pub fn catch_noop(err: TransportError) -> Result<(), InstructionError> {
+pub fn catch_noop(err: BanksClientError) -> Result<(), InstructionError> {
     match err {
-        TransportError::TransactionError(te) => match te {
+        BanksClientError::TransactionError(te) => match te {
             TransactionError::InstructionError(_, ie) => match ie {
                 InstructionError::Custom(7) => Ok(()),
                 _ => Err(ie),
